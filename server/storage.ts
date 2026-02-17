@@ -46,12 +46,15 @@ class MemoryStorage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
+    const userId = userData.id;
+    if (!userId) throw new Error("User ID is required for upsert");
     const user: User = {
       ...userData,
+      id: userId,
       createdAt: new Date(),
       updatedAt: new Date(),
     } as User;
-    this.users.set(userData.id, user);
+    this.users.set(userId, user);
     return user;
   }
 
@@ -70,7 +73,9 @@ class MemoryStorage implements IStorage {
     if (userId) {
       alerts = alerts.filter(a => a.userId === userId);
     }
-    return alerts.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, limit);
+    return alerts
+      .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0))
+      .slice(0, limit);
   }
 
   async createAlert(alert: InsertAlert): Promise<Alert> {
@@ -94,13 +99,13 @@ class MemoryStorage implements IStorage {
 
   async getAlertsLast24h(): Promise<number> {
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    return this.alerts.filter(a => a.createdAt > yesterday).length;
+    return this.alerts.filter(a => (a.createdAt ?? new Date(0)) > yesterday).length;
   }
 
   async getSimulations(userId: string): Promise<Simulation[]> {
     return Array.from(this.simulations.values())
       .filter(s => s.userId === userId)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
   }
 
   async getSimulation(id: string): Promise<Simulation | undefined> {
@@ -145,7 +150,7 @@ class MemoryStorage implements IStorage {
   async getDatasets(userId: string): Promise<Dataset[]> {
     return Array.from(this.datasets.values())
       .filter(d => d.userId === userId)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
   }
 
   async createDataset(dataset: InsertDataset): Promise<Dataset> {
