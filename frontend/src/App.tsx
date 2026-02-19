@@ -20,6 +20,7 @@ import Profile from "@/pages/Profile";
 import BackendSetup from "@/pages/BackendSetup";
 import MLDatasetsAndModels from "@/pages/MLDatasetsAndModels";
 import PythonUtilities from "@/pages/PythonUtilities";
+import DigitalTwinDashboard from "@/components/DigitalTwinDashboard";
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const sidebarStyle = {
@@ -93,6 +94,10 @@ function Router() {
       </Route>
       <Route path="/python-utilities">
         {() => <ProtectedRoute component={PythonUtilities} />}
+      </Route>
+      {/* Digital Twin Dashboard */}
+      <Route path="/digital-twin">
+        {() => <ProtectedRoute component={DigitalTwinDashboard} />}
       </Route>
 
       {/* Fallback */}

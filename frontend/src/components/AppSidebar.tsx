@@ -12,6 +12,7 @@ import {
   Cpu,
   Brain,
   Wrench,
+  Activity,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -38,7 +39,13 @@ const mainNavItems = [
   {
     title: "Virtual Lab",
     url: "/virtual-lab",
+    url: "/virtual-lab",
     icon: FlaskConical,
+  },
+  {
+    title: "Digital Twin",
+    url: "/digital-twin",
+    icon: Activity,
   },
   {
     title: "Knowledge Base",
@@ -114,7 +121,7 @@ export function AppSidebar() {
           </div>
         </Link>
       </SidebarHeader>
-      
+
       <SidebarContent className="flex-1 overflow-y-auto">
         <SidebarGroup>
           <SidebarGroupLabel>Main</SidebarGroupLabel>
@@ -190,9 +197,9 @@ export function AppSidebar() {
             <SidebarMenuButton asChild isActive={location === "/profile"}>
               <Link href="/profile" data-testid="link-profile">
                 <Avatar className="h-6 w-6">
-                  <AvatarImage 
-                    src={user?.profileImageUrl || undefined} 
-                    alt={user?.firstName || "User"} 
+                  <AvatarImage
+                    src={user?.profileImageUrl || undefined}
+                    alt={user?.firstName || "User"}
                     className="object-cover"
                   />
                   <AvatarFallback className="text-xs">{getInitials()}</AvatarFallback>

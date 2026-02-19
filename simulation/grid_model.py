@@ -102,6 +102,12 @@ class GridSimulation:
         # Add some random load fluctuation
         load_factor = np.random.normal(1.0, 0.05)
 
+        # Check for MATLAB mode
+        # You can toggle this via env var or config in practice
+        import os
+        if os.environ.get("USE_MATLAB_BACKEND") == "true":
+            return self.run_matlab_step(load_factor)
+
         results = []
 
         if HAS_PANDAPOWER and self.net:
@@ -115,37 +121,132 @@ class GridSimulation:
                 return self._fallback_simulation(load_factor)
 
             # Extract Bus Results
-            for idx, row in self.net.res_bus.iterrows():
-                vm_pu = float(row['vm_pu'])
-                
-                # Apply FDI Attack logic if active
-                if self.attack_active and self.attack_type == "FDI":
-                     if idx == 0: vm_pu += 0.15 
-                     if idx == 1: vm_pu -= 0.10
+            if not self.net.res_bus.empty:
+                for idx, row in self.net.res_bus.iterrows():
+                    vm_pu = float(row['vm_pu'])
+                    
+                    # Apply FDI Attack logic if active
+                    if self.attack_active and self.attack_type == "FDI":
+                         if idx == 0: vm_pu += 0.15 
+                         if idx == 1: vm_pu -= 0.10
 
-                results.append({
-                    "time": self.step_count,
-                    "type": "bus",
-                    "id": str(idx),
-                    "vm_pu": vm_pu,
-                    "p_mw": float(row['p_mw']),
-                    "attack_injected": self.attack_active
-                })
+                    results.append({
+                        "time": self.step_count,
+                        "type": "bus",
+                        "id": str(idx),
+                        "vm_pu": vm_pu,
+                        "p_mw": float(row['p_mw']),
+                        "attack_injected": self.attack_active
+                    })
             
             # Extract Line Results (to show open breakers)
-            for idx, row in self.net.res_line.iterrows():
-                loading = float(row['loading_percent'])
-                in_service = self.net.line.at[idx, 'in_service']
-                results.append({
-                    "type": "line",
-                    "id": str(idx), # This needs better mapping to UI IDs
-                    "loading": loading,
-                    "status": "closed" if in_service else "tripped"
-                })
+            if not self.net.res_line.empty:
+                for idx, row in self.net.res_line.iterrows():
+                    loading = float(row['loading_percent'])
+                    in_service = self.net.line.at[idx, 'in_service']
+                    results.append({
+                        "type": "line",
+                        "id": str(idx), # This needs better mapping to UI IDs
+                        "loading": loading,
+                        "status": "closed" if in_service else "tripped"
+                    })
         else:
             return self._fallback_simulation(load_factor)
             
         return results
+
+    def run_matlab_step(self, load_factor):
+        """
+        Executes the simulation step using MATLAB via file exchange.
+        """
+        import subprocess
+        import os
+        import json
+
+        # 1. Prepare Inputs
+        inputs = {
+            "load_factor": load_factor,
+            "trip_line": "" 
+        }
+        
+        # Check if any line is tripped (naive check for now, needs state tracking match)
+        # For this demo, we just pass an empty string or specific line if we stored it
+        
+        matlab_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "matlab")
+        input_path = os.path.join(matlab_dir, "input_params.json")
+        output_path = os.path.join(matlab_dir, "output_results.json")
+        
+        try:
+            with open(input_path, 'w') as f:
+                json.dump(inputs, f)
+        except Exception as e:
+            logger.error(f"Failed to write MATLAB inputs: {e}")
+            return self._fallback_simulation(load_factor)
+
+        # 2. Call MATLAB
+        # We assume 'matlab' is in PATH. If not, set MATLAB_EXEC env var.
+        matlab_exec = os.environ.get("MATLAB_EXEC", "matlab")
+        
+        # Command: matlab -batch "cd('full/path/to/matlab'); run_wrapper;"
+        # Note: 'cd' in MATLAB takes a string. 
+        # We replace backslashes with forward slashes for MATLAB string compatibility if needed, 
+        # though MATLAB on Windows usually handles both. usage of single quotes is key.
+        
+        escaped_dir = matlab_dir.replace("\\", "/")
+        cmd = f"cd('{escaped_dir}'); run_wrapper;"
+        
+        try:
+            # shell=True might be needed on Windows for some path resolutions
+            subprocess.run([matlab_exec, "-batch", cmd], check=True, capture_output=True)
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            logger.error(f"MATLAB execution failed: {e}. Check if 'matlab' is in PATH or set MATLAB_EXEC.")
+            return self._fallback_simulation(load_factor)
+
+        # 3. Read Outputs
+        if not os.path.exists(output_path):
+             logger.error("MATLAB output file not found.")
+             return self._fallback_simulation(load_factor)
+             
+        try:
+            with open(output_path, 'r') as f:
+                data = json.load(f)
+                
+            if "error" in data:
+                logger.error(f"MATLAB script reported error: {data['error']}")
+                return self._fallback_simulation(load_factor)
+                
+            # 4. Map to Results format
+            results = []
+            
+            # Buses
+            # MATLAB returns lists/arrays. 
+            vm = data["buses"]["Vm"]
+            pd = data["buses"]["Pd"]
+            
+            for i in range(len(vm)):
+                # idx 1-based in MATLAB, we can keep it 0-based or 1-based in ID
+                val_vm = float(vm[i])
+                val_p = float(pd[i])
+                
+                # Apply Attack (Simulated on top of physical results for the demo)
+                if self.attack_active and self.attack_type == "FDI":
+                     if i == 0: val_vm += 0.15 
+                     if i == 1: val_vm -= 0.10
+
+                results.append({
+                    "time": self.step_count,
+                    "type": "bus",
+                    "id": str(i), 
+                    "vm_pu": val_vm,
+                    "p_mw": val_p,
+                     "attack_injected": self.attack_active
+                })
+                
+            return results
+
+        except Exception as e:
+             logger.error(f"Failed to parse MATLAB results: {e}")
+             return self._fallback_simulation(load_factor)
 
     def _fallback_simulation(self, load_factor):
         # Fallback logic ported from script

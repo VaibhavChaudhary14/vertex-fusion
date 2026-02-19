@@ -1,8 +1,11 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from .grid_model import GridSimulation
+# Import the Digital Twin Client
+from .tcp_client import DigitalTwinClient
 import logging
 import uvicorn
+import contextlib
 
 # Configure logging
 logging.basicConfig(
@@ -11,10 +14,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger("api")
 
-app = FastAPI(title="Vertex Fusion Simulation Engine")
-
-# Singleton simulation instance
+# Global Variables
 simulation = GridSimulation()
+dt_client = DigitalTwinClient()
+
+@contextlib.asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    logger.info("🚀 Starting Vertex Fusion Engine...")
+    dt_client.start()
+    yield
+    # Shutdown
+    logger.info("🛑 Shutting down...")
+    dt_client.stop()
+
+app = FastAPI(title="Vertex Fusion Simulation Engine", lifespan=lifespan)
 
 class AttackRequest(BaseModel):
     attack_type: str
@@ -23,7 +37,7 @@ class AttackRequest(BaseModel):
 
 @app.get("/")
 def read_root():
-    return {"status": "online", "service": "Vertex Fusion Engine"}
+    return {"status": "online", "service": "Vertex Fusion Engine", "twin_connected": dt_client.connected}
 
 @app.get("/health")
 def health_check():
@@ -31,10 +45,9 @@ def health_check():
 
 @app.post("/simulate")
 def run_simulation_step():
-    """Advances the simulation by one time step and returns the grid state."""
+    """Allows manual stepping of the Pandapower simulation (Legacy mode)."""
     try:
         results = simulation.step()
-        # Run detection on the current state
         detection = simulation.detect_attack(results)
         return {"step": simulation.step_count, "grid_state": results, "detection": detection}
     except Exception as e:
@@ -49,18 +62,38 @@ def configure_attack(attack: AttackRequest):
 
 @app.post("/trip-breaker")
 def trip_breaker(line_id: str):
-    """Trips the circuit breaker for a specific line."""
+    """Trips the circuit breaker via Digital Twin TCP link."""
+    # Priority: Send to Real Twin first
+    if dt_client.connected:
+        dt_client.send_trip_command(line_id)
+        return {"status": "success", "message": f"Sent TRIP command for Line {line_id} to MATLAB"}
+    
+    # Fallback to local simulation
     success = simulation.trip_breaker(line_id)
     if success:
-        return {"status": "success", "message": f"Breaker {line_id} tripped"}
+        return {"status": "success", "message": f"Breaker {line_id} tripped (Local Sim)"}
     else:
-        raise HTTPException(status_code=400, detail="Failed to trip breaker (invalid ID or simulation error)")
+        raise HTTPException(status_code=400, detail="Failed to trip breaker")
 
 @app.get("/detect-attack")
 def get_detection():
-    """Returns the latest detection status."""
-    # current implementation returns detection with simulation step, but this endpoint satisfies the requirement
-    return simulation.detect_attack([])
+    """Returns the latest status from the Digital Twin."""
+    if dt_client.connected:
+        # Return real twin state
+        state = dt_client.latest_state
+        return {
+            "source": "DigitalTwin",
+            "connected": state["connected"],
+            "detection": state["detection"],
+            "grid_summary": state["grid_data"][:5] if state["grid_data"] else []
+        }
+    else:
+        # Return legacy simulation state
+        return {
+            "source": "LocalSim",
+            "connected": False,
+            "detection": simulation.detect_attack([])
+        }
 
 @app.post("/reset")
 def reset_simulation():
