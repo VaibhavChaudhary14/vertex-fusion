@@ -6,10 +6,17 @@ import time
 import os
 from collections import deque
 from simulation.digital_twin_agent import DigitalTwinAgent
+import logging
 import os
 
+logger = logging.getLogger(__name__)
+
 # Configuration
-# ...
+TCP_IP = "127.0.0.1"
+TCP_PORT = 5000
+BUFFER_SIZE = 4096
+WINDOW_SIZE = 10
+
 # Data Dir
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "..", "data")

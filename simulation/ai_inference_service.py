@@ -23,7 +23,27 @@ class AIInferenceService:
         
         self.load_artifacts(model_path, scaler_path)
 
-    # ... load_artifacts ...
+    def load_artifacts(self, model_path, scaler_path):
+        try:
+            if hasattr(time, 'sleep'): pass # Dummy check
+            
+            # Load Scaler
+            if 1: # check path existence in real usage
+                self.scaler = joblib.load(scaler_path)
+                logger.info(f"✅ Scaler loaded from {scaler_path}")
+            
+            # Load Model
+            # Note: We use the STGNN class definition from local file
+            # Assuming in_channels=21 based on feature mapping
+            self.model = STGNN(in_channels=self.num_features, hidden_channels=32, out_channels=4)
+            self.model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+            self.model.eval()
+            logger.info(f"✅ Model loaded from {model_path}")
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to load artifacts: {e}. Running in Mock Mode.")
+            self.model = None
+            self.scaler = None
 
     def _map_to_features(self, m):
         """

@@ -1,6 +1,6 @@
-# ⚡ Digital Twin Setup & Execution Guide
+# ⚡ Vertex Fusion: Digital Twin Setup & Execution
 
-This guide details how to build the **IEEE 9-Bus Simscape Model**, integrate it with the Python AI, and run the full closed-loop Digital Twin.
+This guide details how to build the **Vertex Fusion IEEE 9-Bus Digital Twin**, integrate it with the Python AI, and run the full closed-loop system.
 
 ---
 
@@ -100,7 +100,7 @@ python -m simulation.main
 cd frontend
 npm run dev
 ```
-*   Open browser to `http://localhost:5173`.
+*   Open browser to `http://localhost:3000`.
 *   Navigate to **Digital Twin** from the sidebar.
 *   Status should be: **OFFLINE / SIMULATION**.
 

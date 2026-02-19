@@ -83,7 +83,7 @@ export function GridVisualization({
       ctx.beginPath();
       ctx.moveTo(source.x * width, source.y * height);
       ctx.lineTo(target.x * width, target.y * height);
-      
+
       if (edge.type === "physical") {
         ctx.strokeStyle = "rgba(59, 130, 246, 0.4)";
         ctx.lineWidth = 2;
@@ -96,7 +96,7 @@ export function GridVisualization({
         ctx.lineWidth = 1;
         ctx.setLineDash([2, 2]);
       }
-      
+
       ctx.stroke();
       ctx.setLineDash([]);
     });
@@ -109,10 +109,10 @@ export function GridVisualization({
 
       if (isHighlighted) {
         ctx.beginPath();
-        ctx.arc(x, y, radius + 8, 0, Math.PI * 2);
+        ctx.arc(x, y, radius + 12, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(239, 68, 68, 0.3)";
         ctx.fill();
-        
+
         ctx.beginPath();
         ctx.arc(x, y, radius + 4, 0, Math.PI * 2);
         ctx.strokeStyle = "#ef4444";
@@ -135,7 +135,7 @@ export function GridVisualization({
       ctx.font = "bold 9px Inter";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(node.label.substring(0, 3), x, y);
+      ctx.fillText(node.label, x, y);
     });
 
     ctx.restore();
@@ -248,7 +248,7 @@ export function GridVisualization({
             onClick={handleClick}
             data-testid="canvas-grid"
           />
-          
+
           {hoveredNode && (
             <div
               className="absolute z-10 bg-popover border rounded-md p-2 shadow-lg pointer-events-none"
@@ -266,12 +266,11 @@ export function GridVisualization({
                 <div className="text-muted-foreground">
                   Layer: <span className="capitalize">{hoveredNode.layer}</span>
                 </div>
-                <div className={`capitalize ${
-                  hoveredNode.status === "normal" ? "text-success" :
+                <div className={`capitalize ${hoveredNode.status === "normal" ? "text-success" :
                   hoveredNode.status === "warning" ? "text-warning" :
-                  hoveredNode.status === "critical" ? "text-critical" :
-                  "text-muted-foreground"
-                }`}>
+                    hoveredNode.status === "critical" ? "text-critical" :
+                      "text-muted-foreground"
+                  }`}>
                   Status: {hoveredNode.status}
                 </div>
                 {hoveredNode.anomalyScore > 0 && (

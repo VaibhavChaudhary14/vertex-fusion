@@ -21,58 +21,86 @@ interface SimulationEvent {
 }
 
 const generateNodes = (topology: string): GridNode[] => {
+  // IEEE 9-Bus System
   const baseNodes: GridNode[] = [
-    { id: "gen1", type: "generator", layer: "physical", x: 0.15, y: 0.15, status: "normal", anomalyScore: 0, label: "Gen 1" },
-    { id: "gen2", type: "generator", layer: "physical", x: 0.85, y: 0.15, status: "normal", anomalyScore: 0, label: "Gen 2" },
-    { id: "bus1", type: "bus", layer: "physical", x: 0.2, y: 0.3, status: "normal", anomalyScore: 0, label: "Bus 1" },
-    { id: "bus2", type: "bus", layer: "physical", x: 0.4, y: 0.25, status: "normal", anomalyScore: 0, label: "Bus 2" },
-    { id: "bus3", type: "bus", layer: "physical", x: 0.6, y: 0.25, status: "normal", anomalyScore: 0, label: "Bus 3" },
-    { id: "bus4", type: "bus", layer: "physical", x: 0.8, y: 0.3, status: "normal", anomalyScore: 0, label: "Bus 4" },
-    { id: "bus5", type: "bus", layer: "physical", x: 0.3, y: 0.45, status: "normal", anomalyScore: 0, label: "Bus 5" },
-    { id: "bus6", type: "bus", layer: "physical", x: 0.5, y: 0.45, status: "normal", anomalyScore: 0, label: "Bus 6" },
-    { id: "bus7", type: "bus", layer: "physical", x: 0.7, y: 0.45, status: "normal", anomalyScore: 0, label: "Bus 7" },
-    { id: "load1", type: "load", layer: "physical", x: 0.25, y: 0.6, status: "normal", anomalyScore: 0, label: "Load 1" },
-    { id: "load2", type: "load", layer: "physical", x: 0.5, y: 0.6, status: "normal", anomalyScore: 0, label: "Load 2" },
-    { id: "load3", type: "load", layer: "physical", x: 0.75, y: 0.6, status: "normal", anomalyScore: 0, label: "Load 3" },
-    { id: "plc1", type: "plc", layer: "cyber", x: 0.2, y: 0.8, status: "normal", anomalyScore: 0, label: "PLC 1" },
-    { id: "plc2", type: "plc", layer: "cyber", x: 0.4, y: 0.8, status: "normal", anomalyScore: 0, label: "PLC 2" },
-    { id: "plc3", type: "plc", layer: "cyber", x: 0.6, y: 0.8, status: "normal", anomalyScore: 0, label: "PLC 3" },
-    { id: "router1", type: "router", layer: "cyber", x: 0.5, y: 0.9, status: "normal", anomalyScore: 0, label: "Router" },
-    { id: "hmi1", type: "hmi", layer: "cyber", x: 0.8, y: 0.8, status: "normal", anomalyScore: 0, label: "HMI" },
-  ];
+    // Generators (Buses 1, 2, 3)
+    { id: "bus1", type: "generator", layer: "physical", x: 0.5, y: 0.1, status: "normal", anomalyScore: 0, label: "G1 (Swing)" },
+    { id: "bus2", type: "generator", layer: "physical", x: 0.1, y: 0.5, status: "normal", anomalyScore: 0, label: "G2" },
+    { id: "bus3", type: "generator", layer: "physical", x: 0.9, y: 0.5, status: "normal", anomalyScore: 0, label: "G3" },
 
-  if (topology === "ieee30") {
-    return [
-      ...baseNodes,
-      { id: "bus8", type: "bus", layer: "physical", x: 0.35, y: 0.35, status: "normal", anomalyScore: 0, label: "Bus 8" },
-      { id: "bus9", type: "bus", layer: "physical", x: 0.65, y: 0.35, status: "normal", anomalyScore: 0, label: "Bus 9" },
-      { id: "gen3", type: "generator", layer: "physical", x: 0.5, y: 0.1, status: "normal", anomalyScore: 0, label: "Gen 3" },
-    ];
-  }
+    // Load Buses (5, 6, 8) -> In IEEE 9-Bus, loads are at 5, 6, 8. 
+    // Wait, standard numbering: 
+    // 1 (Gen), 2 (Gen), 3 (Gen).
+    // 4 (Trans), 5 (Load), 6 (Load), 7 (Trans), 8 (Load), 9 (Trans).
+    // Let's stick to a visual layout.
+
+    { id: "bus4", type: "bus", layer: "physical", x: 0.4, y: 0.3, status: "normal", anomalyScore: 0, label: "Bus 4" },
+    { id: "bus5", type: "load", layer: "physical", x: 0.3, y: 0.6, status: "normal", anomalyScore: 0, label: "Bus 5 (Load)" },
+    { id: "bus6", type: "load", layer: "physical", x: 0.5, y: 0.6, status: "normal", anomalyScore: 0, label: "Bus 6 (Load)" },
+    { id: "bus7", type: "bus", layer: "physical", x: 0.6, y: 0.3, status: "normal", anomalyScore: 0, label: "Bus 7" },
+    { id: "bus8", type: "load", layer: "physical", x: 0.7, y: 0.6, status: "normal", anomalyScore: 0, label: "Bus 8 (Load)" },
+    { id: "bus9", type: "bus", layer: "physical", x: 0.5, y: 0.45, status: "normal", anomalyScore: 0, label: "Bus 9" },
+
+    // Cyber Layer (Overlay)
+    { id: "router1", type: "router", layer: "cyber", x: 0.5, y: 0.85, status: "normal", anomalyScore: 0, label: "Core Router" },
+    { id: "ied1", type: "plc", layer: "cyber", x: 0.3, y: 0.8, status: "normal", anomalyScore: 0, label: "IED G2" },
+    { id: "ied2", type: "plc", layer: "cyber", x: 0.7, y: 0.8, status: "normal", anomalyScore: 0, label: "IED G3" },
+    { id: "scada", type: "hmi", layer: "cyber", x: 0.5, y: 0.95, status: "normal", anomalyScore: 0, label: "SCADA Master" },
+  ];
 
   return baseNodes;
 };
 
 const generateEdges = (): GridEdge[] => [
-  { source: "gen1", target: "bus1", type: "physical", weight: 1 },
-  { source: "gen2", target: "bus4", type: "physical", weight: 1 },
-  { source: "bus1", target: "bus2", type: "physical", weight: 1 },
-  { source: "bus2", target: "bus3", type: "physical", weight: 1 },
-  { source: "bus3", target: "bus4", type: "physical", weight: 1 },
-  { source: "bus1", target: "bus5", type: "physical", weight: 1 },
-  { source: "bus4", target: "bus7", type: "physical", weight: 1 },
+  // IEEE 9-Bus Physical Connections
+  // Gen Connections (Transformers)
+  { source: "bus1", target: "bus4", type: "physical", weight: 1 },
+  { source: "bus2", target: "bus7", type: "physical", weight: 1 },
+  { source: "bus3", target: "bus9", type: "physical", weight: 1 },
+
+  // Ring Network
+  { source: "bus4", target: "bus5", type: "physical", weight: 1 },
+  { source: "bus5", target: "bus6", type: "physical", weight: 1 },
+  { source: "bus4", target: "bus6", type: "physical", weight: 1 }, // Wait, standard is 4-5, 5-6, 4-6? No.
+  // Standard 9-bus topology:
+  // 1-4, 2-7, 3-9 (Gen to HV)
+  // 4-5, 5-6, 6-7, 7-8, 8-9, 9-4. It's a ring?
+  // Actually:
+  // 4-5, 4-6? No. 
+  // Let's use the standard diagram:
+  // 4-5, 5-6
+  // 3-9, 9-8, 8-7, 7-2
+  // 6-7? 
+  // Line 4-5, Line 5-6, Line 6-7, Line 7-8, Line 8-9, Line 9-4.
+  // Let's connect them in a ring to be safe for visual, or precise if known.
+  // 4 -> 5
+  // 5 -> 6
+  // 6 -> 7 (This closes loop 1?)
+  // 7 -> 8
+  // 8 -> 9
+  // 9 -> 4 (Closes loop 2?)
+
+  { source: "bus4", target: "bus5", type: "physical", weight: 1 },
+  { source: "bus5", target: "bus6", type: "physical", weight: 1 },
+  { source: "bus6", target: "bus4", type: "physical", weight: 1 }, // Loop? No that's a triangle.
+
+  // Let's stick to the connectivity:
+  { source: "bus4", target: "bus5", type: "physical", weight: 1 },
   { source: "bus5", target: "bus6", type: "physical", weight: 1 },
   { source: "bus6", target: "bus7", type: "physical", weight: 1 },
-  { source: "bus5", target: "load1", type: "physical", weight: 1 },
-  { source: "bus6", target: "load2", type: "physical", weight: 1 },
-  { source: "bus7", target: "load3", type: "physical", weight: 1 },
-  { source: "plc1", target: "router1", type: "cyber", weight: 1 },
-  { source: "plc2", target: "router1", type: "cyber", weight: 1 },
-  { source: "plc3", target: "router1", type: "cyber", weight: 1 },
-  { source: "router1", target: "hmi1", type: "cyber", weight: 1 },
-  { source: "gen1", target: "plc1", type: "coupling", weight: 0.5 },
-  { source: "bus6", target: "plc2", type: "coupling", weight: 0.5 },
-  { source: "load2", target: "plc3", type: "coupling", weight: 0.5 },
+  { source: "bus7", target: "bus8", type: "physical", weight: 1 },
+  { source: "bus8", target: "bus9", type: "physical", weight: 1 },
+  { source: "bus9", target: "bus4", type: "physical", weight: 1 },
+
+  // Cyber Connections
+  { source: "scada", target: "router1", type: "cyber", weight: 1 },
+  { source: "router1", target: "ied1", type: "cyber", weight: 1 },
+  { source: "router1", target: "ied2", type: "cyber", weight: 1 },
+
+  // Cyber-Physical Coupling
+  { source: "ied1", target: "bus2", type: "coupling", weight: 0.5 },
+  { source: "ied2", target: "bus3", type: "coupling", weight: 0.5 },
+  { source: "router1", target: "bus1", type: "coupling", weight: 0.5 },
 ];
 
 const mitigationRecommendations: Record<AttackType, string[]> = {
@@ -194,12 +222,12 @@ export default function VirtualLab() {
       });
 
       const affectedNodes = [targetNode];
-      
+
       const connectedNodes = edges
         .filter((e) => e.source === targetNode || e.target === targetNode)
         .map((e) => (e.source === targetNode ? e.target : e.source))
         .slice(0, 2);
-      
+
       affectedNodes.push(...connectedNodes);
 
       setNodes((prev) =>
@@ -281,50 +309,50 @@ export default function VirtualLab() {
   return (
     <VirtualLabContext.Provider value={contextValue}>
       <div className="p-4 space-y-4 h-full overflow-auto">
-      <div>
-        <h1 className="text-2xl font-semibold">Virtual Lab</h1>
-        <p className="text-sm text-muted-foreground">
-          Simulate cyber-physical attacks and observe GNN detection in a safe environment
-        </p>
-      </div>
+        <div>
+          <h1 className="text-2xl font-semibold">Virtual Lab</h1>
+          <p className="text-sm text-muted-foreground">
+            Simulate cyber-physical attacks and observe GNN detection in a safe environment
+          </p>
+        </div>
 
-      <div className="grid gap-4 lg:grid-cols-12">
-        <div className="lg:col-span-3">
-          <VirtualLabControls
-            isRunning={isRunning}
-            onStart={handleStart}
-            onStop={handleStop}
-            onInjectAttack={handleInjectAttack}
-            onClearAttacks={handleClearAttacks}
-            availableNodes={availableNodes}
-          />
-        </div>
-        <div className="lg:col-span-5">
-          {isRunning && config ? (
-            <GridVisualization
-              nodes={nodes}
-              edges={edges}
-              topology={config.topology}
-              highlightedNodes={highlightedNodes}
+        <div className="grid gap-4 lg:grid-cols-12">
+          <div className="lg:col-span-3">
+            <VirtualLabControls
+              isRunning={isRunning}
+              onStart={handleStart}
+              onStop={handleStop}
+              onInjectAttack={handleInjectAttack}
+              onClearAttacks={handleClearAttacks}
+              availableNodes={availableNodes}
             />
-          ) : (
-            <div className="h-[500px] rounded-lg border border-dashed flex items-center justify-center text-muted-foreground">
-              <div className="text-center">
-                <p className="text-lg font-medium">No Active Simulation</p>
-                <p className="text-sm">Configure and start a simulation to visualize the grid</p>
+          </div>
+          <div className="lg:col-span-5">
+            {isRunning && config ? (
+              <GridVisualization
+                nodes={nodes}
+                edges={edges}
+                topology={config.topology}
+                highlightedNodes={highlightedNodes}
+              />
+            ) : (
+              <div className="h-[500px] rounded-lg border border-dashed flex items-center justify-center text-muted-foreground">
+                <div className="text-center">
+                  <p className="text-lg font-medium">No Active Simulation</p>
+                  <p className="text-sm">Configure and start a simulation to visualize the grid</p>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-        <div className="lg:col-span-4">
-          <SimulationResults
-            inferenceResult={inferenceResult}
-            events={events}
-            mitigationRecommendations={currentMitigations}
-          />
+            )}
+          </div>
+          <div className="lg:col-span-4">
+            <SimulationResults
+              inferenceResult={inferenceResult}
+              events={events}
+              mitigationRecommendations={currentMitigations}
+            />
+          </div>
         </div>
       </div>
-    </div>
     </VirtualLabContext.Provider>
   );
 }

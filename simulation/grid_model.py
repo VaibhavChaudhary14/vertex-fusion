@@ -33,38 +33,22 @@ class GridSimulation:
         self.ai_agent = AIAgent()
         
         if HAS_PANDAPOWER:
-            self.net = self._create_3_bus_network()
+            self.net = self._create_9_bus_network()
             logger.info("Initialized with pandapower network")
         else:
             logger.warning("Pandapower not found, running in fallback simulation mode")
 
-    def _create_3_bus_network(self):
+    def _create_9_bus_network(self):
         if not HAS_PANDAPOWER:
             return None
-        
-        net = pp.create_empty_network()
-        
-        # buses
-        b1 = pp.create_bus(net, vn_kv=110, name="Bus 1")
-        b2 = pp.create_bus(net, vn_kv=110, name="Bus 2")
-        b3 = pp.create_bus(net, vn_kv=110, name="Bus 3")
-        
-        # grid connection
-        pp.create_ext_grid(net, bus=b1, vm_pu=1.02, name="Grid Connection")
-        
-        # Loads
-        pp.create_load(net, bus=b2, p_mw=50, q_mvar=30, name="Load 1")
-        pp.create_load(net, bus=b3, p_mw=40, q_mvar=20, name="Load 2")
-        
-        # Generator
-        pp.create_gen(net, bus=b2, p_mw=20, vm_pu=1.01, name="Gen 1")
-        
-        # Lines
-        pp.create_line(net, from_bus=b1, to_bus=b2, length_km=10, std_type="NA2XS2Y 1x240 RM/25 12/20 kV", name="Line 1-2")
-        pp.create_line(net, from_bus=b2, to_bus=b3, length_km=15, std_type="NA2XS2Y 1x240 RM/25 12/20 kV", name="Line 2-3")
-        pp.create_line(net, from_bus=b1, to_bus=b3, length_km=20, std_type="NA2XS2Y 1x240 RM/25 12/20 kV", name="Line 1-3")
-        
-        return net
+        try:
+            # Use standard IEEE 9-Bus case
+            net = pn.case9()
+            logger.info("✅ Loaded IEEE 9-Bus System (Vertex Fusion Standard)")
+            return net
+        except Exception as e:
+            logger.error(f"Failed to load case9: {e}")
+            return None
 
     def set_attack(self, attack_type: str, params: dict):
         self.attack_active = (attack_type != "none")
@@ -249,18 +233,28 @@ class GridSimulation:
              return self._fallback_simulation(load_factor)
 
     def _fallback_simulation(self, load_factor):
-        # Fallback logic ported from script
-        v1 = 1.02
-        
-        if self.attack_active and self.attack_type == "FDI":
-             v1 += 0.15 # FDI Offset
+        # Fallback logic for Vertex Fusion (9-Bus)
+        results = []
+        for i in range(1, 10): # Buses 1 to 9
+            # Random nominal values
+            vm = 1.0 + np.random.normal(0, 0.01)
+            p = 0.0
+            
+            # Simple profile
+            if i in [1, 2, 3]: vm = 1.02 # Gen buses
+            if i in [5, 6, 8]: p = -90.0 * load_factor # Load buses
+            
+            # Attack Injection (FDI on Bus 5)
+            if self.attack_active and self.attack_type == "FDI" and i == 5:
+                 vm += 0.15 
 
-        v2 = 1.01 * load_factor
-        v3 = 0.98
-
-        return [
-            {"time": self.step_count, "type": "bus", "id": "1", "vm_pu": v1, "p_mw": -50 * load_factor},
-            {"time": self.step_count, "type": "bus", "id": "2", "vm_pu": v2, "p_mw": 20},
-            {"time": self.step_count, "type": "bus", "id": "3", "vm_pu": v3, "p_mw": 40 * load_factor},
-            {"time": self.step_count, "type": "meta", "attack_active": self.attack_active, "attack_type": self.attack_type}
-        ]
+            results.append({
+                "time": self.step_count, 
+                "type": "bus", 
+                "id": str(i-1), # Pandapower uses 0-based idx usually
+                "vm_pu": vm, 
+                "p_mw": p,
+                "attack_injected": self.attack_active
+            })
+            
+        return results
