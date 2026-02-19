@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+numpy
+pydantic
+# pandapower # Commented out for now to ensure portability if user lacks complex C++ deps, enables fallback mode

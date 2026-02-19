@@ -174,6 +174,27 @@ export const systemMetrics = pgTable("system_metrics", {
   recordedAt: timestamp("recorded_at").defaultNow(),
 });
 
+// Automated Mitigation Actions
+export const mitigationActions = pgTable("mitigation_actions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  actionType: varchar("action_type", { length: 50 }).notNull(),
+  description: text("description").notNull(),
+  isEnabled: boolean("is_enabled").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Mitigation Execution Logs
+export const mitigationLogs = pgTable("mitigation_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  alertId: varchar("alert_id").references(() => alerts.id),
+  actionId: varchar("action_id"), // Can be null if manual or ad-hoc
+  actionType: varchar("action_type", { length: 50 }).notNull(),
+  target: varchar("target", { length: 100 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull(), // 'success', 'failed', 'pending'
+  message: text("message"),
+  executedAt: timestamp("executed_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   alerts: many(alerts),
@@ -253,6 +274,16 @@ export const insertSystemMetricSchema = createInsertSchema(systemMetrics).omit({
   recordedAt: true,
 });
 
+export const insertMitigationActionSchema = createInsertSchema(mitigationActions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertMitigationLogSchema = createInsertSchema(mitigationLogs).omit({
+  id: true,
+  executedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -270,6 +301,10 @@ export type InsertDataset = z.infer<typeof insertDatasetSchema>;
 export type Dataset = typeof datasets.$inferSelect;
 export type InsertSystemMetric = z.infer<typeof insertSystemMetricSchema>;
 export type SystemMetric = typeof systemMetrics.$inferSelect;
+export type InsertMitigationAction = z.infer<typeof insertMitigationActionSchema>;
+export type MitigationAction = typeof mitigationActions.$inferSelect;
+export type InsertMitigationLog = z.infer<typeof insertMitigationLogSchema>;
+export type MitigationLog = typeof mitigationLogs.$inferSelect;
 
 // Grid node types for visualization
 export interface GridNode {
