@@ -72,8 +72,26 @@ def detect_attack_endpoint():
         logger.error(f"Detection error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/reset")
-def reset_simulation():
-    global simulation
-    simulation = GridSimulation()
-    return {"status": "reset_complete"}
+@app.get("/explain-attack")
+def explain_attack():
+    """Returns SHAP feature importance values."""
+    # Mock logic based on attack state
+    if simulation.attack_active:
+        return {
+            "features": [
+                {"feature": "V_Bus2", "impact": 0.35, "contribution": 35},
+                {"feature": "P_Line2-3", "impact": 0.25, "contribution": 25},
+                {"feature": "Q_Gen3", "impact": 0.15, "contribution": 15},
+                {"feature": "F_Bus1", "impact": 0.10, "contribution": 10},
+                {"feature": "I_Line4", "impact": 0.05, "contribution": 5},
+            ]
+        }
+    else:
+         return {
+            "features": [
+                {"feature": "V_Bus2", "impact": 0.02, "contribution": 2},
+                {"feature": "P_Line2-3", "impact": 0.01, "contribution": 1},
+                {"feature": "Q_Gen3", "impact": 0.01, "contribution": 1},
+                 {"feature": "Normal_Noise", "impact": 0.05, "contribution": 5},
+            ]
+        }

@@ -20,10 +20,10 @@ export function Sidebar() {
     const [location] = useLocation();
 
     const navItems = [
-        { icon: LayoutDashboard, label: "Dashboard", path: "/" },
-        { icon: Activity, label: "Grid Monitor", path: "/monitor" },
-        { icon: ShieldAlert, label: "AI Detection", path: "/ai-detection" },
-        { icon: Microscope, label: "SHAP Explainer", path: "/shap" },
+        { icon: LayoutDashboard, label: "Control Room", path: "/digital-twin" },
+        { icon: Activity, label: "Grid Monitor", path: "/monitor" }, // Can map to same or different view
+        { icon: ShieldAlert, label: "AI Detection", path: "/digital-twin" }, // Focus on main dash
+        { icon: Microscope, label: "SHAP Explainer", path: "/digital-twin" }, // Panel is on dash
         { icon: Server, label: "SCADA Bridge", path: "/scada" },
         { icon: Cpu, label: "Model Perf", path: "/performance" },
         { icon: Settings, label: "Settings", path: "/settings" },

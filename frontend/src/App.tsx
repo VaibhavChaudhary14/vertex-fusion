@@ -21,6 +21,7 @@ import BackendSetup from "@/pages/BackendSetup";
 import MLDatasetsAndModels from "@/pages/MLDatasetsAndModels";
 import PythonUtilities from "@/pages/PythonUtilities";
 import DigitalTwinDashboard from "@/components/DigitalTwinDashboard";
+import MetricsDashboard from "@/components/MetricsDashboard";
 
 import { GlassLayout } from "@/components/layout/GlassLayout";
 
@@ -85,6 +86,16 @@ function Router() {
       </Route>
       {/* Digital Twin Dashboard */}
       <Route path="/digital-twin">
+        {() => <ProtectedRoute component={DigitalTwinDashboard} />}
+      </Route>
+
+      {/* Cyber-Physical Modules */}
+      <Route path="/performance">
+        {() => <ProtectedRoute component={MetricsDashboard} />}
+      </Route>
+      <Route path="/shap">
+        {/* Reusing SHAPPanel in a layout wrapper or standalone page if needed */}
+        {/* For now, let's just route it to the dashboard or a specific view */}
         {() => <ProtectedRoute component={DigitalTwinDashboard} />}
       </Route>
 

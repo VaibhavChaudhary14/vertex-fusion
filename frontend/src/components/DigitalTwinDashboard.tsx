@@ -5,6 +5,8 @@ import { SCADAMonitor } from './SCADAMonitor';
 import { VoltageGraph } from './VoltageGraph';
 import { CurrentGraph } from './CurrentGraph';
 import { Button } from "@/components/ui/button";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { SHAPPanel } from './SHAPPanel';
 import { Zap, Activity, RefreshCw } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
@@ -225,12 +227,12 @@ export default function DigitalTwinDashboard() {
                                 onTripBreaker={handleTrip}
                             />
                         </div>
-                        <div className="md:col-span-1">
+                        <div className="md:col-span-1 flex flex-col gap-6">
                             <SCADAMonitor connected={status?.connected || false} source={status?.source} />
 
-                            {/* Placeholder for SHAP Mini-panel */}
-                            <div className="mt-6 glass-panel p-4 h-32 flex items-center justify-center text-muted-foreground font-mono text-xs border-dashed">
-                                SHAP EXPLAINABILITY MODULE LOADING...
+                            {/* SHAP Mini-panel */}
+                            <div className="flex-1 min-h-0">
+                                <SHAPPanel />
                             </div>
                         </div>
                         <div className="md:col-span-1 glass-panel p-4 overflow-hidden relative">
