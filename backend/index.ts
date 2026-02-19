@@ -80,7 +80,7 @@ app.use((req, res, next) => {
       } catch (err) {
         console.error("Polling loop error:", err);
       }
-    }, 200); // Poll every 200ms for 5fps updates
+    }, 1000); // Poll every 1s to reduce load
 
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       const status = err.status || err.statusCode || 500;

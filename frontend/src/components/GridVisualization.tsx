@@ -14,9 +14,9 @@ interface GridVisualizationProps {
 }
 
 const nodeColors: Record<string, string> = {
-  generator: "#22c55e",
-  bus: "#3b82f6",
-  load: "#8b5cf6",
+  generator: "#22c55e", // Keep Green for Gen
+  bus: "#06b6d4",       // Neon Cyan for Bus
+  load: "#7c3aed",      // Neon Violet for Load
   transformer: "#f59e0b",
   pmu: "#06b6d4",
   plc: "#ec4899",
@@ -69,7 +69,9 @@ export function GridVisualization({
     const width = rect.width;
     const height = rect.height;
 
+    // Clear with transparent (handled by CSS background)
     ctx.clearRect(0, 0, width, height);
+
     ctx.save();
     ctx.translate(pan.x + width / 2, pan.y + height / 2);
     ctx.scale(zoom, zoom);
@@ -85,12 +87,16 @@ export function GridVisualization({
       ctx.lineTo(target.x * width, target.y * height);
 
       if (edge.type === "physical") {
-        ctx.strokeStyle = "rgba(59, 130, 246, 0.4)";
+        ctx.strokeStyle = "rgba(6, 182, 212, 0.3)"; // Cyan with opacity
         ctx.lineWidth = 2;
+        ctx.shadowBlur = 4;
+        ctx.shadowColor = "rgba(6, 182, 212, 0.5)";
       } else if (edge.type === "cyber") {
-        ctx.strokeStyle = "rgba(236, 72, 153, 0.4)";
+        ctx.strokeStyle = "rgba(124, 58, 237, 0.4)"; // Violet with opacity
         ctx.lineWidth = 1.5;
         ctx.setLineDash([4, 4]);
+        ctx.shadowBlur = 2;
+        ctx.shadowColor = "rgba(124, 58, 237, 0.3)";
       } else {
         ctx.strokeStyle = "rgba(139, 92, 246, 0.3)";
         ctx.lineWidth = 1;
@@ -99,6 +105,7 @@ export function GridVisualization({
 
       ctx.stroke();
       ctx.setLineDash([]);
+      ctx.shadowBlur = 0;
     });
 
     nodes.forEach((node) => {
@@ -109,33 +116,45 @@ export function GridVisualization({
 
       if (isHighlighted) {
         ctx.beginPath();
-        ctx.arc(x, y, radius + 12, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(239, 68, 68, 0.3)";
+        ctx.arc(x, y, radius + 15, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(239, 68, 68, 0.2)"; // Red Glow
         ctx.fill();
 
         ctx.beginPath();
-        ctx.arc(x, y, radius + 4, 0, Math.PI * 2);
+        ctx.arc(x, y, radius + 5, 0, Math.PI * 2);
         ctx.strokeStyle = "#ef4444";
         ctx.lineWidth = 2;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "#ef4444";
         ctx.stroke();
+        ctx.shadowBlur = 0;
       }
 
+      // Node Body
       ctx.beginPath();
       ctx.arc(x, y, radius, 0, Math.PI * 2);
       ctx.fillStyle = nodeColors[node.type] || "#6b7280";
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = nodeColors[node.type] || "#6b7280";
       ctx.fill();
+      ctx.shadowBlur = 0;
 
+      // Status Ring
       ctx.beginPath();
       ctx.arc(x, y, radius + 2, 0, Math.PI * 2);
       ctx.strokeStyle = statusColors[node.status];
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 2;
       ctx.stroke();
 
+      // Label
       ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 9px Inter";
+      ctx.font = "bold 10px Inter";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
+      ctx.shadowBlur = 4;
+      ctx.shadowColor = "rgba(0,0,0,0.8)";
       ctx.fillText(node.label, x, y);
+      ctx.shadowBlur = 0;
     });
 
     ctx.restore();

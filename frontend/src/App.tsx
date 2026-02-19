@@ -22,25 +22,13 @@ import MLDatasetsAndModels from "@/pages/MLDatasetsAndModels";
 import PythonUtilities from "@/pages/PythonUtilities";
 import DigitalTwinDashboard from "@/components/DigitalTwinDashboard";
 
-function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
-  const sidebarStyle = {
-    "--sidebar-width": "16rem",
-    "--sidebar-width-icon": "3.5rem",
-  };
+import { GlassLayout } from "@/components/layout/GlassLayout";
 
+function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider style={sidebarStyle as React.CSSProperties}>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex flex-col flex-1 overflow-hidden">
-          <header className="sticky top-0 z-50 flex items-center justify-between px-4 py-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <SidebarTrigger data-testid="button-sidebar-toggle" />
-            <ThemeToggle />
-          </header>
-          <main className="flex-1 overflow-y-auto overflow-x-hidden">{children}</main>
-        </div>
-      </div>
-    </SidebarProvider>
+    <GlassLayout>
+      {children}
+    </GlassLayout>
   );
 }
 
