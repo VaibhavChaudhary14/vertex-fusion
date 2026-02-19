@@ -7,6 +7,8 @@ import { z } from "zod";
 import { GoogleGenAI } from "@google/genai";
 import passport from "passport";
 import { randomBytes } from "crypto";
+import { WebSocketServer } from "ws";
+import { setupWebSockets, broadcast } from "./ws";
 
 const genAI = process.env.GEMINI_API_KEY 
   ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
@@ -26,6 +28,7 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  const wss = setupWebSockets(httpServer);
   await setupAuth(app);
 
   app.get("/api/auth/user", isAuthenticated, async (req, res) => {
@@ -101,6 +104,28 @@ export async function registerRoutes(
         status: "running",
         startedAt: new Date(),
       });
+
+      // Broadcast simulation start
+      broadcast(wss, { type: "SIMULATION_STARTED", simulation });
+
+      // Create an alert automatically for demonstration if attack is in sequence
+      if (req.body.attackSequence && req.body.attackSequence.length > 0) {
+        setTimeout(async () => {
+          const attack = req.body.attackSequence[0];
+          const alert = await storage.createAlert({
+            userId,
+            simulationId: simulation.id,
+            attackType: attack.attackType,
+            severity: "high",
+            affectedNodes: [attack.targetNode],
+            confidenceScore: 0.95,
+            classification: "malicious",
+            mitigationRecommendation: "Isolate target node and verify SCADA logs.",
+          });
+          broadcast(wss, { type: "NEW_ALERT", alert });
+        }, 3000);
+      }
+
       res.json(simulation);
     } catch (error) {
       console.error("Error creating simulation:", error);
