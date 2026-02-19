@@ -9,6 +9,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { AppSidebar } from "@/components/AppSidebar";
 import { ScanEffect } from "@/components/ScanEffect";
 import { useAuth } from "@/hooks/useAuth";
+import { useWebSockets } from "@/hooks/useWebSockets";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/Landing";
 import SignUp from "@/pages/SignUp";
@@ -61,6 +62,9 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
 function Router() {
   // AUTHENTICATION TEMPORARILY COMMENTED OUT - Users go directly to dashboard
   // const { isAuthenticated, isLoading } = useAuth();
+  
+  // Initialize WebSockets
+  useWebSockets();
 
   // if (isLoading) {
   //   return <div className="w-full h-screen flex items-center justify-center">Loading...</div>;

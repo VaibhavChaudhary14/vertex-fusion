@@ -36,8 +36,15 @@ export const useWebSockets = () => {
   }, [toast, queryClient]);
 
   useEffect(() => {
+    // Avoid connecting to WebSockets during SSR or if window is not defined
+    if (typeof window === "undefined") return;
+
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    // Replit uses a proxy, so we often need to ensure the host is correct
+    const host = window.location.host;
+    const wsUrl = `${protocol}//${host}/ws`;
+    
+    console.log("Connecting to WebSocket at:", wsUrl);
     const socket = new WebSocket(wsUrl);
 
     socket.onmessage = handleMessage;
