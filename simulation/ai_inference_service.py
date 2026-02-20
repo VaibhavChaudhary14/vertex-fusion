@@ -166,3 +166,77 @@ class AIInferenceEngine:
                 "status": "error", 
                 "message": str(e)
             }
+
+    def explain(self, features):
+        """
+        Phase 12: Explainable AI (SHAP equivalent via Saliency Gradients)
+        Runs a backward pass from the predicted logit to extract the exact physical 
+        features (Nodes x Sensors) that triggered the ST-GNN anomaly detection.
+        Returns a (9x6) importance matrix and the top contributing factors.
+        """
+        if self.model is None:
+            return {"error": "Model not loaded"}
+            
+        try:
+            features = np.array(features)
+            window_size, num_nodes, num_features = 10, 9, 6
+            
+            if features.size == 540:
+                features_4d = features.reshape(1, window_size, num_nodes, num_features)
+            else:
+                features_2d = features.reshape(window_size, 18)
+                features_4d = np.zeros((1, window_size, num_nodes, num_features))
+                features_4d[0, :, 0:3, :] = features_2d.reshape(window_size, 3, 6)
+                
+            x_tensor = torch.tensor(features_4d, dtype=torch.float32, requires_grad=True).to(self.device)
+            
+            self.model.eval()
+            self.model.zero_grad()
+            
+            logits = self.model(x_tensor)
+            probs = torch.softmax(logits, dim=0)
+            pred = torch.argmax(probs).item()
+            
+            # If normal (0), we still can explain why it thought it was normal, 
+            # but usually we emphasize why it triggered an attack.
+            target_logit = logits[pred]
+            target_logit.backward()
+            
+            # Saliency map: Absolute gradients across the temporal window
+            # x_tensor.grad shape: [1, 10, 9, 6]
+            gradients = x_tensor.grad.detach().cpu().numpy()[0] # [10, 9, 6]
+            
+            # Aggregate importance over time (mean absolute gradient along time axis)
+            feature_importance = np.mean(np.abs(gradients), axis=0) # [9, 6]
+            
+            # Normalize to sum = 100%
+            total_grad = np.sum(feature_importance)
+            if total_grad > 0:
+                feature_importance = (feature_importance / total_grad) * 100.0
+            
+            # Extract top 5 contributing logical features
+            feature_names = ["Voltage Mag", "Voltage Ang", "P", "Q", "Frequency", "Current Mag"]
+            importances = []
+            
+            for bus_idx in range(9):
+                for feat_idx in range(6):
+                    imp = float(feature_importance[bus_idx, feat_idx])
+                    if imp > 0:
+                        importances.append({
+                            "bus": bus_idx + 1,
+                            "feature": feature_names[feat_idx],
+                            "importance": round(imp, 2)
+                        })
+            
+            # Sort descending
+            importances.sort(key=lambda x: x["importance"], reverse=True)
+            
+            return {
+                "prediction": self.attack_labels[pred],
+                "confidence": round(probs[pred].item(), 4),
+                "top_features": importances[:10],
+                "raw_matrix": feature_importance.tolist()
+            }
+            
+        except Exception as e:
+            return {"error": str(e)}

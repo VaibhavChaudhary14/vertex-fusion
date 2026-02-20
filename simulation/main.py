@@ -145,6 +145,36 @@ def predict(request: PredictRequest):
 
     return result
 
+@app.get("/shap")
+def get_shap_explanation():
+    """
+    Phase 12: Real-time Explainable AI endpoints via Saliency Gradients.
+    Fetches the latest 540-feature array from SCADA memory and runs a backward pass
+    to determine exactly which bus and sensor triggered the anomaly.
+    """
+    state = get_latest_state()
+    features = state.get("latest_features", [])
+    
+    if not features or len(features) == 0:
+        return {"error": "No telemetry data explicitly buffered yet. Ensure SCADA is running."}
+
+    try:
+        from ai_inference_service import AIInferenceEngine
+    except ImportError:
+        try:
+            from .ai_inference_service import AIInferenceEngine
+        except ImportError:
+            return {"error": "Could not import AIInferenceEngine"}
+
+    import os
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    model_path = os.path.join(BASE_DIR, "models", "stgnn_model.pth")
+
+    engine = AIInferenceEngine(model_path=model_path)
+    # The explain() function computes gradients and importance mapping
+    explanation = engine.explain(features)
+    return explanation
+
 @app.get("/status")
 def system_status():
     """Full system status including model info"""

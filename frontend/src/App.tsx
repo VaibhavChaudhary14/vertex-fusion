@@ -16,6 +16,7 @@ import VirtualLab from "@/pages/VirtualLab";
 import Knowledge from "@/pages/Knowledge";
 import Assistant from "@/pages/Assistant";
 import Threats from "@/pages/Threats";
+import Explainability from "@/pages/Explainability";
 import Datasets from "@/pages/Datasets";
 import Profile from "@/pages/Profile";
 import BackendSetup from "@/pages/BackendSetup";
@@ -74,6 +75,9 @@ function Router() {
       </Route>
       <Route path="/threats">
         {() => <AppRoute component={Threats} />}
+      </Route>
+      <Route path="/explainability">
+        {() => <AppRoute component={Explainability} />}
       </Route>
       <Route path="/datasets">
         {() => <AppRoute component={Datasets} />}

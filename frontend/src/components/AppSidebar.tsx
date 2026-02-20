@@ -11,6 +11,7 @@ import {
   Cpu,
   Brain,
   Wrench,
+  Activity,
 } from "lucide-react";
 import {
   Sidebar,
@@ -51,6 +52,11 @@ const mainNavItems = [
 ];
 
 const analyticsItems = [
+  {
+    title: "Explainable AI (XAI)",
+    url: "/explainability",
+    icon: Activity,
+  },
   {
     title: "Threat Feed",
     url: "/threats",

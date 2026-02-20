@@ -35,10 +35,10 @@ latest_system_state = {
     "prediction": 0,
     "confidence": 0.0,
     "status": "NORMAL",
-    "attack_type": "None",
     "breaker_status": "CLOSED",
     "latency_ms": 0.0,
-    "probabilities": {"Normal": 1.0, "FDI": 0.0, "DoS": 0.0, "Replay": 0.0}
+    "probabilities": {"Normal": 1.0, "FDI": 0.0, "DoS": 0.0, "Replay": 0.0},
+    "latest_features": []
 }
 
 # Attack Configuration
@@ -148,8 +148,8 @@ def run_scada_server(host="0.0.0.0", port=5020):
             
             attack_map = {"None": 0, "FDI": 1, "DoS": 2, "Replay": 3}
             true_label = attack_map.get(current_attack["type"], 0)
-            
             window_flat_scaled = window_scaled.flatten()
+            latest_system_state["latest_features"] = window_flat_scaled.tolist()
             result = inference_engine.predict(window_flat_scaled, true_label=true_label)
             pred = result["prediction"]
             conf = result["confidence"]
@@ -257,9 +257,9 @@ def run_scada_server(host="0.0.0.0", port=5020):
                                     window_scaled = window
                             else:
                                 window_scaled = window
-                            
                             # Inference
                             window_flat_scaled = window_scaled.flatten()
+                            latest_system_state["latest_features"] = window_flat_scaled.tolist()
                             
                             attack_map = {"None": 0, "FDI": 1, "DoS": 2, "Replay": 3}
                             true_label = attack_map.get(current_attack["type"], 0)
