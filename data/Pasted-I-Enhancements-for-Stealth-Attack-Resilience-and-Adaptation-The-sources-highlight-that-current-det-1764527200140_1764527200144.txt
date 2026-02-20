@@ -1,0 +1,42 @@
+I. Enhancements for Stealth Attack Resilience and Adaptation
+The sources highlight that current detectors often fail against slow injection attacks and lack the ability to adapt to emerging attack patterns without retraining. Addressing these gaps is critical for real-world usefulness.
+Feature Category
+Specific Implementation Details and Purpose
+Source Justification
+Online Learning / Adaptive Mechanism Module
+Integrate a specialized component for online learning or adaptive learning mechanisms. This allows the GNN model to continuously adjust its parameters on the fly as new benign or slightly altered attack data streams in, enabling the detection of emerging attack patterns and evolving threats.
+Future works include integrating adaptive learning mechanisms to detect emerging attack patterns. Future research could explore improvements such as online learning to adapt to evolving threats.
+Slow Injection Attack Detection Tool
+Develop a dedicated algorithm and visualization tool to evaluate system performance against slow injection attacks. This tool must be designed to monitor gradually altered measurements over time to mimic stealthy behavior, which is a major area of future work.
+An important direction for future work is to evaluate the system’s performance against slow injection attacks. These attacks will be simulated... by gradually altering measurements over time to mimic stealthy behavior.
+"Generalized Detection" Optimization Tool
+Offer advanced training optimization specific to the Generalized Detector (which is trained on multi-attack CP data). The goal is to optimize its performance to further reduce the reliance on retraining when new attack types emerge.
+Generalized IDSs trained on multi-attack CP data demonstrate competitive performance compared to attack-specific models, reducing the need for retraining when new attack types emerge. Future research could explore generalization to unseen attack types without retraining.
+II. Enhancements for SCADA Protocol and Real-Time Operational Integration
+The sources confirm that the testbed uses realistic SCADA components (PLCs, HMIs, Modbus/TCP), but practical deployment requires tighter integration.
+Feature Category
+Specific Implementation Details and Purpose
+Source Justification
+Native SCADA Data Parsers
+Implement native parsers for industrial control protocols like Modbus/TCP (used in the testbed), DNP3, and IEC 61850 GOOSE signals. This allows direct ingestion and feature extraction from raw traffic, bypassing the initial need for converting PCAP files via TShark to structured CSV format.
+The relay queries the PLC and transmits the collected data through the central cyber node to an ElasticSearch database... Using Modbus/TCP, a relay queries the PLC. Prior works focused on DNP3-based attacks or IEC 61850 GOOSE signals.
+Real-Time Deployment Optimization Layer
+Incorporate a focus on optimization for real-time deployment. This means ensuring low latency in the processing pipeline (ingestion, fusion, GNN inference) by leveraging the computational efficiency of the Chebyshev approximation used in the GNN implementation.
+Future research could explore optimization for real-time deployment in large-scale power systems using distributed GNN architectures and hardware acceleration. The Chebyshev approximation used in our GNN implementation enables computational efficiency.
+ElasticSearch Integration Dashboard
+A dedicated dashboard providing direct access to the system historian, ElasticSearch. This allows operators to perform efficient querying of historical system states and visualize raw data logs used for training and detection, supporting monitoring and anomaly detection in CP infrastructures.
+ElasticSearch serves as a centralized historian for logging and analyzing CPS data. It enables efficient querying of historical system states, making it an essential component for monitoring and detecting anomalies in CP infrastructures.
+III. Enhancements for Research, Validation, and Reproducibility
+The sources emphasize the difficulty in obtaining realistic datasets and the importance of scientific validation.
+Feature Category
+Specific Implementation Details and Purpose
+Source Justification
+Vulnerability-Based Observability Configuration Tool
+Allow users to define the Partial Observability configuration by weighting specific electrical and topological metrics using the Analytical Hierarchical Process (AHP). This includes metrics like effective graph resistance, load shedding, connectivity impact, and geodesic vulnerability, allowing utility operators to configure monitoring based on their specific critical infrastructure definitions.
+The critical nodes are selected based on their overall vulnerability scores, derived using AHP to weigh electrical metrics (effective graph resistance, load shedding, etc.) and topological metrics (connectivity impact, geodesic vulnerability, etc.).
+Reproducible Data Generation Environment
+Since the product is based on a successful CP testbed (using OPAL-RT and Docker containers), offer a tool or environment that allows utilities to simulate attacks (RW, FDI, BF, RS, BD) within their own synthetic grid topology to generate site-specific attack datasets. This addresses the scarcity of real-world datasets.
+The testbed was developed to produce a realistic multi-modal dataset covering normal operations and various cyberattacks, including RW, brute force, false data injection, reverse shell, and backdoor.
+Benchmark Comparison Module
+A reporting module that automatically compares the performance of the proprietary CP-GNN model against established, classical benchmarks cited in the research, such as SVM, ARIMA, FNN, LSTM-RNN, and AEA. This validates the GNN's superiority (up to 26% higher DR) using the customer's operational data.
+The GNN-based IDS is evaluated against shallow, deep, supervised, and unsupervised benchmarks. The GNN-based IDSs consistently outperform benchmark models in all key metrics.

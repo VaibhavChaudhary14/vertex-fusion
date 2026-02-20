@@ -1,0 +1,44 @@
+~/workspace$ # 1) Kill all node / tsx processes
+pkill -9 -f "server/index.ts" 2>/dev/null || true
+pkill -9 -f "dist/index.cjs"  2>/dev/null || true
+pkill -9 -f "node"            2>/dev/null || true
+pkill -9 -f "tsx"             2>/dev/null || true
+
+# 2) Check if anything is still running
+ps aux | grep node
+runner     20580  1.2  0.0      0     0 pts/2    Zl   04:29   0:04 [node] <defunct>
+runner     21007  0.0  0.0   6920  3000 pts/1    S+   04:34   0:00 /nix/store/l2wvwyg680h0v2la18hz3yiznxy2naqw-gnugrep-3.11/bin/grep --color=auto node
+~/workspace$ kill -9 <PID>
+bash: syntax error near unexpected token `newline'
+~/workspace$ ps aux | grep node
+runner     21039  1.2  0.0 1030836 59124 pts/2   Sl+  04:34   0:00 /nix/store/lz7iav1hd92jbv44zf2rdd7b2mj23536-nodejs-20.19.3/bin/node /home/runner/workspace/node_modules/.bin/tsx server/index.ts
+runner     21050 17.4  0.4 54795768 317640 pts/2 Sl+  04:34   0:03 /nix/store/lz7iav1hd92jbv44zf2rdd7b2mj23536-nodejs-20.19.3/bin/node --require /home/runner/workspace/node_modules/tsx/dist/preflight.cjs --import file:///home/runner/workspace/node_modules/tsx/dist/loader.mjs server/index.ts
+runner     21062 11.7  0.4 994020 291184 pts/2   Sl+  04:34   0:02 /home/runner/workspace/node_modules/vite/node_modules/@esbuild/linux-x64/bin/esbuild --service=0.21.5 --ping
+runner     21086  0.0  0.0   6920  2900 pts/1    S+   04:35   0:00 /nix/store/l2wvwyg680h0v2la18hz3yiznxy2naqw-gnugrep-3.11/bin/grep --color=auto node
+~/workspace$ cd ~/workspace
+npm run dev
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use 0.0.0.0:5000
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at doListen (node:net:2139:7)
+    at process.processTicksAndRejections (node:internal/process/task_queues:83:21)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -98,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 5000
+}
+
+Node.js v20.19.3
+~/workspace$ 

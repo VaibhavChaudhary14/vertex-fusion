@@ -1,0 +1,53 @@
+## 🎨 Design Prompt for Vertex Fusion (Inspired by Lusion)
+
+This prompt aims to translate the sleek, performance-driven, and highly engaging design language of Lusion's website into the **Vertex Fusion** SaaS platform, specifically focusing on the **Landing Page, Dashboard, and core interactive elements**.
+
+The goal is to create a dark-mode, high-contrast, professional interface that conveys sophistication and real-time intelligence, suitable for utility operators and analysts.
+
+---
+
+### 1. 🖼️ Overall Aesthetic & Theming
+
+**Objective:** Achieve a "Controlled Intelligence" feel—minimalist, professional, high-performance, and dark.
+
+| Attribute | Specification | Rationale |
+| :--- | :--- | :--- |
+| **Color Palette** | **Primary (Background):** Deep, uniform Black/Dark Grey (`#0A0A0A` or similar). **Accent:** A vibrant, technical Electric Blue or Cyber Green (`#00FFFF` or `#00FF00`) used sparingly for text highlights, indicators, and focus states. **Secondary:** A clean, slightly desaturated white/light grey for body text. | Emulates a Security Operations Center (SOC) or Network Operations Center (NOC) environment. The high-contrast accent highlights critical real-time data and interactive elements. |
+| **Typography** | **Font:** Clean, modern sans-serif (e.g., **Inter** or **SF Pro Display**). **Usage:** Minimal use of thin/light weights; prioritize medium to bold weights for scannability and impact. Use large, dramatic heading sizes (similar to Lusion's hero text) for the main title and section headers. | Ensures clarity and authority, maintaining the high-tech, performance-driven feel. |
+| **Spacing & Layout** | **Padding/Margins:** Generous use of whitespace (dark space) to frame content and reduce visual clutter, giving a premium feel. **Structure:** Predominantly full-width sections, but with content centered and constrained to a maximum width (e.g., 1400px) for readability. | Clean, structured presentation vital for displaying complex data. |
+
+---
+
+### 2. 🎬 Homepage (Landing Page) Design & Animation
+
+**Objective:** Create a highly engaging, high-performance hero section that instantly communicates the product's value (GNN-powered real-time detection).
+
+| Component | Design/Animation Specification (Lusion Influence) | Vertex Fusion Content Adaptation |
+| :--- | :--- | :--- |
+| **Hero Section (Above the Fold)** | **Large, Bold, Animated Text:** The main headline should be dominant and centrally placed. Use a subtle, high-performance **text reveal effect** (split-text or a masked wipe) on load to capture attention. | **Headline:** "Detect Cyber-Physical Attacks in Real-Time. GNN Fusion." **Sub-Headline:** "The definitive AI platform for smart grid security and simulation." |
+| **Interactive Background** | **Subtle, Dynamic Element:** Instead of a static image, the background should feature a **low-opacity, high-performance WebGL/Canvas visualization** of a pulsing, interconnected **Cyber-Physical Graph Topology** (nodes representing buses and routers). This graph should appear to be processing data (subtle pulsing/flow lines) without distracting from the text. | **Element:** Animated visualization of the IEEE 30-bus graph structure, with critical nodes subtly highlighted in the accent color, representing the GNN core. |
+| **Scroll-Based Transitions** | **Section Reveal:** Use fluid, hardware-accelerated scroll animations (e.g., parallax, sticky elements, or clean fade-ins) to reveal subsequent feature blocks as the user scrolls down, maintaining a cinematic pace. | **Application:** Apply this to the **"Real-Time Monitoring"** and **"Virtual Lab"** feature sections. |
+| **Navigation & CTA** | **Minimalist Header:** Fixed, minimal header (logo left, links right). **CTA:** Prominent, high-contrast button (e.g., Electric Blue background) for **"Start Free Trial / Request Demo"**. | **Placement:** Right side of the fixed header and centered below the hero text. |
+
+---
+
+### 3. 🖥️ Dashboard & UI/UX Elements
+
+**Objective:** Ensure the complex, real-time data is presented clearly, with a focus on scannability and intuitive interaction, similar to Lusion's precise, clean presentation of their work.
+
+| Component | Design/UX Specification | Technical Implementation Focus |
+| :--- | :--- | :--- |
+| **Real-Time Graph** | **Interactive & Performant:** Must render thousands of nodes/edges smoothly (D3.js/Cytoscape.js). **State Communication:** Use clear, high-contrast color coding for node status: Green (Benign), Amber (Anomaly), Red (Confirmed Attack). **Tooltips:** Clean, non-intrusive tooltips on hover to display node metadata ($\mathbf{X}_c, \mathbf{X}_p$ feature summaries). | Optimize for $\text{sub-60fps}$ rendering using WebGL/Canvas where possible. Use WebSockets for near-instantaneous state updates.  |
+| **GNN Alert Stream** | **High-Density, High-Scannability:** Design as a thin, dedicated panel (fixed to the left/right). Each alert entry uses a compact, easily recognizable **severity badge** (High, Medium, Low) and minimal text (Timestamp, Attack Type, Confidence). | Use fixed-width fonts and clean table/list structure. Ensure fast filtering and sorting by severity/time. |
+| **CP Feature Correlation View** | **Split View/Modal:** Present data side-by-side (Physical $\mathbf{X}_p$ vs. Cyber $\mathbf{X}_c$). **Charting:** Use clean, minimal line/area charts (Chart.js/Recharts). **Key UX:** Synchronize the X-axis (time) across all charts to allow analysts to visually correlate the physical deviation with the cyber indicators. | Focus on data-ink ratio; remove unnecessary chart junk. Highlight the exact moment of GNN detection on the chart using a vertical accent line. |
+| **Virtual Lab Controls** | **Tactile/Industrial Feel:** Design the control panel (Simulation/Attack Injection forms) using clean, bordered input fields and switches that visually "click" or toggle, giving a sense of control and precision (similar to Lusion's sharp, defined buttons). | Use Tailwind CSS utility classes to achieve sharp borders, subtle inner shadows, and clear focus states. |
+
+---
+
+### 4. ⚙️ Performance & Technology
+
+**Objective:** The user experience must be fluid and instantaneous, mirroring the high-performance feel of the Lusion site.
+
+* **Front-End Framework:** **Next.js** for optimized loading, routing, and server-side rendering/static generation where appropriate (e.g., Landing Page, Knowledge Base).
+* **Performance Priority:** Leverage **TypeScript** for code quality and ensure all scroll effects and animations are handled by **CSS transitions** or **hardware-accelerated WebGL/Canvas** (for the background graph) to achieve **60fps** rendering, especially on the Dashboard.
+* **Deployment Target:** Optimized for deployment on **Vercel** to utilize global edge caching for near-instant load times.

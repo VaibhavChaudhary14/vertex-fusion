@@ -1,0 +1,32 @@
+focus on Scientific Rigor, Model Refinement, and User Operationalization.
+1. Enhance Scientific Rigor and Comparative Analysis
+Your app should not just run the GNN, but should prove its scientific superiority using the metrics provided in the source material:
+• Benchmark Integration and Visualization: You currently have the GNN deployed; now integrate the benchmark models cited in the paper.
+    ◦ Feature: Comparative Performance Dashboard. Allow users to run the same dataset (or their operational data) through the GNN-IDS and key benchmark models: SVM, FNN, LSTM-RNN, ARIMA, and AEA.
+    ◦ Metric Visualization: Directly display the performance metrics defined in the paper (DR, FA, F1-Score). This validates the GNN’s claim of achieving up to 26% higher DR and consistently superior F1-Scores compared to these benchmarks.
+• Partial Observability Reporting Tool: Provide an integrated report that quantifies the minimal performance degradation under partial observability.
+    ◦ Feature: A dedicated Robustness Report module showing that the DR reduction is only 1–2% when comparing full versus partial observability on the same network. This showcases the system's robust applicability to real-world scenarios where full observability is impractical.
+2. Model and Data Refinement for Real-Time Utility Use
+Refine the input and training process based on granular data steps described in the paper:
+• Real-Time Imputation and Fusion Status: Implement a dashboard component that specifically monitors the Cyber-Physical Data Fusion engine.
+    ◦ Feature: Imputation Monitor. This monitors the process that uses a data imputation step to match every row in the cyber data with a corresponding row in the physical data, which is necessary because the collection rates of cyber and physical data are not equal. The status should confirm that the final node attributes vector X is correctly formed as X=[X 
+c
+​
+ ,X 
+p
+​
+ ].
+• Hyper-Parameter Tuning Automation: Since the optimal hyper-parameters were found via a sequential grid search strategy, automate this process for new deployments or new grid topologies.
+    ◦ Feature: Automated Hyper-Parameter Optimization (HPO) Tool. This tool would allow utility engineers to initiate an optimization process to find the best settings (e.g., Chebyshev coefficients μ 
+l
+​
+ , bias b 
+l
+​
+ , layer counts) for their specific grid, overcoming the computational expense of exhaustive searches while retaining strong empirical performance.
+3. Deepen the Virtual Lab and Testbed Replication
+• Vulnerability-Based Critical Node Selector Implementation: Since your Virtual Lab supports partial observability, ensure the selection of critical nodes is mathematically sound, as described in the sources.
+    ◦ Feature: Critical Node Configuration Utility. This tool should implement the Analytical Hierarchical Process (AHP) to weigh topological and electrical metrics (e.g., effective graph resistance, connectivity impact, load shedding, geodesic vulnerability) to automatically determine the top V% (35%) of nodes that must be monitored. This ensures the simulation accurately reflects the realistic SCADA configuration under partial observability.
+• Attack Flow Visualization: Enhance the simulation visualization for training and forensic purposes.
+    ◦ Feature: Attack Flow Visualizer. This module should graphically display the steps of the attacks simulated in the testbed (e.g., the FDI attack flowchart) showing the compromised control center, ARP spoofing, redirection of Modbus/TCP traffic to a fake PLC, and eventual circuit breaker disablement.
+By implementing these final, highly detailed features, you move beyond merely replicating the models described in the paper to creating a fully validated, scientifically rigorous, and operationally integrated tool suitable for critical infrastructure use.

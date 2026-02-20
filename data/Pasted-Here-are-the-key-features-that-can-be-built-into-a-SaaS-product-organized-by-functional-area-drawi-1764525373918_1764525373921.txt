@@ -1,0 +1,39 @@
+Here are the key features that can be built into a SaaS product, organized by functional area, drawing directly from the source material:
+1. Multi-Modal Cyber-Physical Data Integration and Ingestion
+The central innovation of the paper is CP fusion, which necessitates a system capable of handling and synthesizing heterogeneous data streams.
+• Physical Layer Data Ingestion: Implement connectors to ingest real-time operational data from the physical power grid infrastructure.
+    ◦ Specific Feature Input: Collect and process power system measurements, including active power (P), reactive power (Q), voltage, current measurements, and frequency.
+    ◦ Real-time Logging: Store continuous physical measurements in a centralized historian/database (analogous to the ElasticSearch function described in the testbed) for real-time indexing, retrieval, and analysis of system states.
+• Cyber Layer Data Ingestion: Implement functionality to collect and process network communication data.
+    ◦ Specific Feature Input: Extract relevant network log information such as IP addresses, port numbers, and packet protocol types (which must be handled via one-hot encoding for the model).
+    ◦ Packet-Level Capture: Support ingestion of raw network traffic data (like PCAP format) and conversion into a structured format for analysis.
+• Data Synchronization and Fusion Engine: A critical background function is the ability to harmonize data collected at different rates.
+    ◦ Data Imputation: Implement a robust mechanism to perform a data imputation step, ensuring that every row in the cyber data is matched with a corresponding row in the physical data, overcoming synchronization challenges.
+2. Graph Modeling and Topological Representation
+The SaaS application must visually and functionally represent the smart grid as a graph structure to leverage the GNN model's advantages.
+• CP Graph Definition Tool: Allow administrators to define and visualize the power system as a connected, undirected, weighted graph (G).
+    ◦ Node Management (V): Define heterogeneous nodes representing both the physical layer (power substations/buses, generators, loads) and the cyber layer (routers, PLCs, HMIs, servers).
+    ◦ Edge Definition (E): Map out the system connectivity, distinguishing between intra-layer edges (transmission lines, network links connecting routers) and inter-layer edges (the coupling links between the cyber and physical components).
+    ◦ Weight Assignment (W): Apply weights to physical intra-edges based on line admittance values and binary values for cyber intra-edges and inter-edges (based on adjacency).
+• Observability Configuration: Provide settings to define the system's observability status.
+    ◦ Partial Observability Mode: Enable a configuration where only a subset of critical physical nodes (e.g., critical loads and generators) are connected to the cyber layer and monitored, mirroring realistic SCADA deployments where full observability is not feasible.
+    ◦ Vulnerability Scoring Integration (Advanced): Offer tools or integrations to help determine which nodes are "critical" (e.g., based on electrical metrics like effective graph resistance or topological metrics) to enable effective partial observability monitoring.
+3. GNN-Based Attack Detection Engine
+This is the core functional feature where the machine learning model operates on the fused CP data.
+• Topologically-Aware Intrusion Detection: Deploy the GNN model architecture, utilizing Chebyshev graph convolution layers, designed specifically to capture spatial features and dependencies within the graph-structured data.
+• Comprehensive Threat Coverage: The detection system must be trained and deployed to identify a wide range of cyberattacks observed in critical infrastructure incidents.
+    ◦ Support detection for advanced threats including Ransomware (RW), Brute Force (BF), Reverse Shell (RS), and Backdoor (BD) attacks (attacks primarily detected using cyber features).
+    ◦ Support detection for physical manipulation attacks like False Data Injection (FDI) (attacks primarily detected using physical features).
+• Model Deployment Options: Offer the flexibility to deploy different types of detection models:
+    ◦ Generalized Detector: A model trained on multi-attack CP data to handle diverse threats, showing strong generalization capability.
+    ◦ Attack-Specific Detectors: Models specialized for detecting individual attack types.
+• Continuous Learning Integration (Future Feature): Incorporate planned future work, such as online learning or adaptive learning mechanisms, to enable the model to adapt to evolving threats and detect emerging attack patterns without full retraining.
+4. Performance Monitoring and Reporting
+The application must provide a user interface to display the results and evaluate the efficacy of the IDS.
+• Real-Time Classification Output: Provide a continuous binary classification output indicating whether a given sample represents normal operation (benign) or attack conditions (malicious).
+• Performance Metrics Dashboard: Display core IDS evaluation metrics to the operator:
+    ◦ Detection Rate (DR): Percentage of correctly identified malicious samples.
+    ◦ False Alarm Rate (FA): Percentage of benign samples misclassified as malicious.
+    ◦ F1-Score: A balanced metric combining precision and recall.
+• Anomaly Visualization Tool: A graphical feature illustrating the impact of attacks on the physical layer, such as plotting real-time Active Power (P) samples to visually highlight noticeable deviations induced by cyberattacks compared to normal benign operation.
+• Robustness Reporting: Features summarizing the system's performance under different conditions, such as comparisons between detection rates under full observability versus partial observability, highlighting the model's robustness

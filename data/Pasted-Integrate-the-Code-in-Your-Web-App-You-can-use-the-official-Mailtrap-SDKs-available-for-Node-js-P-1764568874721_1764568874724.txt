@@ -1,0 +1,60 @@
+Integrate the Code in Your Web App
+You can use the official Mailtrap SDKs (available for Node.js, Python, PHP, etc.) or standard SMTP libraries. 
+Using the Mailtrap Node.js SDK (Example):
+Install the SDK: Open the shell in Replit and run:
+bash
+npm install mailtrap
+Add sending code: Use the following structure, which pulls the token from your Replit secrets:
+javascript
+import { MailtrapClient } from "mailtrap";
+
+const TOKEN = process.env.MAILTRAP_API_TOKEN; // Access the secret
+const SENDER_EMAIL = process.env.FROM_ADDRESS; // Access the secret
+
+const client = new MailtrapClient({ token: TOKEN });
+
+const sendEmail = async (recipientEmail, subject, textContent, htmlContent) => {
+  try {
+    const response = await client.send({
+      from: { email: SENDER_EMAIL, name: "Your App Name" },
+      to: [{ email: recipientEmail }],
+      subject: subject,
+      text: textContent,
+      html: htmlContent,
+    });
+    console.log("Email sent successfully:", response);
+  } catch (error) {
+    console.error("Failed to send email:", error);
+  }
+};
+
+// Example usage:
+sendEmail("recipient@example.com", "Welcome!", "Hello from Replit!", "<h1>Hello from Replit!</h1>");
+Note: The actual implementation will vary based on your web app's structure (e.g., inside a form submission handler). 
+Using Python (Example):
+Install the SDK: Open the shell and run:
+bash
+pip install mailtrap
+Add sending code: Use the os library to access your secrets:
+python
+import os
+import mailtrap as mt
+
+# Access secrets
+API_TOKEN = os.environ["MAILTRAP_API_TOKEN"]
+SENDER_EMAIL = os.environ["FROM_ADDRESS"]
+
+mail = mt.Mail(
+    sender=mt.Address(email=SENDER_EMAIL, name="Your App"),
+    to=[mt.Address(email="recipient@example.com", name="Recipient Name")],
+    subject="Welcome to Our App",
+    text="Hello from Mailtrap + Replit!",
+)
+
+client = mt.MailtrapClient(token=API_TOKEN)
+try:
+    client.send(mail)
+    print("Production email sent.")
+except Exception as e:
+    print(f"Failed to send email: {e}")
+```

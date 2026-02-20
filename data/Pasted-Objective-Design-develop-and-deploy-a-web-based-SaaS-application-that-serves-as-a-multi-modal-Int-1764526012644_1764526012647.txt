@@ -1,0 +1,61 @@
+Objective: Design, develop, and deploy a web-based SaaS application that serves as a multi-modal Intrusion Detection System (IDS) for Smart Power Grids (SGs) by leveraging Graph Neural Networks (GNNs) and Cyber-Physical (CP) feature fusion. The system must address the limitations of existing detectors by integrating both physical and cyber features, supporting partial observability, and detecting advanced threats.
+
+--------------------------------------------------------------------------------
+Part 1: Architecture and Core Technology
+1. System Foundation (Cyber-Physical Modeling): The application must internally model the SG as a connected, undirected, weighted graph G=(V,E,W).
+    ◦ Nodes (V): Define heterogeneous nodes representing both the physical layer (e.g., power substations/buses, loads, generators) and the cyber layer (e.g., routers, PLCs, HMIs, servers).
+    ◦ Edges (E, W): Represent connectivity through intra-layer edges (transmission lines, network links) and inter-layer edges (coupling links between cyber and physical components). Physical intra-edge weights (W 
+p
+​
+ ) must be based on line admittance values, while cyber intra-edges and inter-edges (W 
+c
+​
+ ,W 
+cp
+​
+ ) use binary values derived from the adjacency matrix.
+2. Detection Engine (GNN Implementation): The core detection mechanism must be a GNN-based IDS.
+    ◦ Architecture: Utilize a multi-layer architecture with stacked Chebyshev graph convolution layers to capture spatial features and dependencies within the graph-structured data.
+    ◦ Training and Output: Implement the training procedure using cross-entropy loss function C( 
+y
+~
+​
+ ,y) and produce a final output layer using a sigmoid function to determine the probability of an attack.
+Part 2: Data Handling and Fusion Pipeline
+1. Data Ingestion and Preprocessing: Implement robust mechanisms to ingest and process multi-modal data streams (Table 2).
+    ◦ Physical Features (X 
+p
+​
+ ): Ingest real-time measurements, including active power (P), reactive power (Q), voltage, current measurements, and frequency.
+    ◦ Cyber Features (X 
+c
+​
+ ): Ingest structured network log information, including IP addresses, port numbers, and packet protocol type (derived from converted PCAP data).
+    ◦ Normalization and Encoding: Implement feature normalization for numerical features and apply one-hot encoding for the categorical cyber feature (packet protocol) before training.
+    ◦ CP Data Fusion Engine (Critical Step): Implement a data imputation step to match every row in the cyber data with a corresponding row in the physical data, compensating for unequal collection rates during any given period. The node attributes (X) for the GNN input will be the fused vector [X 
+c
+​
+ ,X 
+p
+​
+ ].
+2. Observability Configuration: Provide a tool for grid operators to define system visibility, addressing the unrealistic assumption of full observability.
+    ◦ Full Observability Mode: Configuration where measurements from all power nodes are available at the IDS.
+    ◦ Partial Observability Mode: Configuration where only a subset of cyber and physical data is supplied to the GNN model, corresponding to features collected from critical loads and generators. This mode must support defining critical nodes (e.g., the top 35%) based on vulnerability scores derived from electrical and topological metrics.
+Part 3: Intrusion Detection and Analytics Features
+1. Attack Detection Coverage: The system must be capable of detecting sophisticated threats observed in critical infrastructure incidents.
+    ◦ Cyber-Dominant Attacks: Detect Ransomware (RW), Brute Force (BF), Reverse Shell (RS), and Backdoor (BD) attacks (attacks where cyber features are often more effective).
+    ◦ Physical-Dominant Attacks: Detect False Data Injection (FDI) attacks (attacks where physical features are often more effective).
+    ◦ Model Options: Provide both Attack-Specific Detectors (optimized for single threat types) and a Generalized Detector (trained on multi-attack CP data to handle diverse threats).
+2. Performance and Visualization Dashboard: Provide critical performance feedback and operational insight to the user.
+    ◦ Key Metrics Display: Display real-time and historical performance using core IDS evaluation metrics:
+        ▪ Detection Rate (DR): Percentage of malicious samples correctly identified.
+        ▪ False Alarm Rate (FA): Percentage of benign samples misclassified as malicious.
+        ▪ F1-Score: Balanced measure combining precision and recall.
+    ◦ Anomaly Visualization: Include a visualization tool (similar to Fig. 5) that plots real-time Active Power (P) samples, highlighting noticeable deviations induced by cyberattacks compared to normal operation to support the operator’s understanding of physical impact.
+    ◦ Robustness Reporting: Generate reports comparing detection performance (DR, FA, F1-Score) under Partial Observability versus Full Observability to confirm the model’s robustness against limited visibility.
+Part 4: Future Works and Scalability Requirements
+1. Scalability: The architecture must be inherently scalable to handle larger systems (e.g., beyond the IEEE 30-bus model, which showed higher DRs) by potentially leveraging distributed GNN frameworks and hierarchical graph partitioning.
+2. Future Enhancements (Planned Integration): The architecture should be designed to accommodate future works, including:
+    ◦ Online Learning: Integration of adaptive learning mechanisms to detect emerging attack patterns without full retraining.
+    ◦ Stealth Attack Detection: Capability to integrate new models designed to detect slow injection attacks by monitoring gradually altered measurements over time.

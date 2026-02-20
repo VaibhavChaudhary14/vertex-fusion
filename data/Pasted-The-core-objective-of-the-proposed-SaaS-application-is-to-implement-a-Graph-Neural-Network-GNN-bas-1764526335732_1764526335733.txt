@@ -1,0 +1,38 @@
+The core objective of the proposed SaaS application is to implement a Graph Neural Network (GNN)-based Cyber-Physical (CP) Intrusion Detection System (IDS) for Smart Power Grids (SGs). To make this application more scalable and useful, we must focus on features that enhance its deployment in large-scale, real-world utility networks and address the "Future Works" explicitly mentioned in the source material.
+
+Here are minute details, features, and things that can be added to enhance the scalability and usefulness of your SaaS product, directly supported by the sources:
+
+## I. Enhancements for Scalability and Large-Scale Deployment
+
+The sources explicitly discuss the need to extend the framework to handle systems larger than the IEEE 30-bus model, such as the IEEE 118-bus or real-world utility networks.
+
+| Feature Category | Minute Details and Implementation | Source Justification |
+| :--- | :--- | :--- |
+| **Distributed GNN Framework Integration** | Implement support for **distributed GNN frameworks** to handle the increased computational load and memory requirements associated with large-scale power system graphs. The architecture should allow for parallel processing of graph convolution operations. | The architecture must be extended to more complex systems, such as the IEEE 118-bus or real-world utility networks, by leveraging **distributed GNN frameworks**. |
+| **Hierarchical Graph Partitioning** | Introduce modules for **hierarchical graph partitioning**. For massive grids, the system can partition the master graph $G$ into smaller, manageable subgraphs, running detection locally or sequentially, thus improving computational efficiency. | The model can be extended to complex systems by leveraging **hierarchical graph partitioning**. Future work includes extending the framework to large-scale power systems with **distributed computation for efficient processing**. |
+| **Hardware Acceleration Optimization** | Optimization layer to utilize specialized hardware (e.g., GPUs or dedicated AI chips) for GNN computation, ensuring **real-time deployment**. The GNN’s use of the **Chebyshev approximation** already aids computational efficiency, but hardware acceleration would maximize this. | Future research could explore **optimization for real-time deployment** in large-scale power systems using **hardware acceleration**. |
+| **Increased Data Capacity Leverage** | Design data ingestion pipelines (utilizing ElasticSearch) optimized to benefit from larger datasets. The detection rate (DR) is observed to increase by up to 10% when moving from the 14-bus to the 30-bus system due to the richer dataset, suggesting that handling and leveraging even larger datasets will further improve performance. | The GNN-based IDS achieves higher DRs (up to 6% improvement) in the IEEE 30-bus system compared to the IEEE 14-bus system, attributed to capturing **more spatial features**. |
+
+## II. Enhanced Usefulness and Advanced Detection Features
+
+To make the application more useful, the focus shifts to detecting emerging threats, reducing the need for retraining, and adapting to real-world operations.
+
+| Feature Category | Minute Details and Implementation | Source Justification |
+| :--- | :--- | :--- |
+| **Adaptive/Online Learning Mechanism** | Implement **adaptive learning mechanisms** or **online learning** within the detection engine. This feature allows the model to continuously update its parameters and adapt to evolving threats and emerging attack patterns **without requiring full model retraining**. | Future works include integrating **adaptive learning mechanisms** to detect **emerging attack patterns**. |
+| **Slow Injection Attack Detection Module** | Develop a specialized module to evaluate the system's performance against **slow injection attacks**. This module must monitor gradually altered measurements over time to catch stealthy behavior that static models might miss. | An important direction for future work is to evaluate the system’s performance against **slow injection attacks**. These attacks involve **gradually altering measurements over time** to mimic stealthy behavior. |
+| **Generalization to Unseen Attack Types** | The system should be capable of **generalization to unseen attack types without retraining**. This requires the generalized detector (which already performs well) to be further optimized to handle unknown malicious activities based on learned graph features. | Future research could explore **generalization to unseen attack types without retraining**. |
+| **Attack-Type Identification and Localization** | While the GNN detects *if* an attack occurred (binary classification), future capabilities could enhance the output to include **localization** (identifying *where* the attack is occurring on the graph) and **classification** (identifying *which* attack type it is). | Prior research mentioned in the source discusses a GNN multi-task learning approach for detection and **localization of cyberattacks**. |
+| **Robust Hyper-Parameter Tuning Tools** | Provide a comprehensive sequential grid search utility or similar optimization tools within the application setup process to determine optimal hyper-parameters (e.g., number of GNN layers, learning rate, batch size) tailored to the specific grid topology. | The optimal hyper-parameters for the GNN-based IDS and benchmarks were determined using a **sequential grid search strategy**. This approach is necessary due to the high dimensionality of the parameter space. |
+
+## III. Data and Real-World Integration Features
+
+The sources emphasize the need for real-world applicability and realistic data handling.
+
+| Feature Category | Minute Details and Implementation | Source Justification |
+| :--- | :--- | :--- |
+| **SCADA Protocol Integration Layer** | Implement a layer to natively integrate and ingest data directly from common SCADA protocols (e.g., DNP3, IEC 61850 GOOSE, or Modbus/TCP, as used in the testbed). This moves beyond relying on simple PCAP/CSV file conversion. | Practical deployment may require **integration with SCADA protocols**. Previous works examined protocols like DNP3 and IEC 61850 GOOSE signals. The testbed uses **Modbus/TCP**. |
+| **Vulnerability-Based Critical Node Selector** | Provide a utility for defining the "critical loads and generators" used in **Partial Observability Mode**. This tool should use metrics based on the Analytical Hierarchical Process (AHP), incorporating factors like: **effective graph resistance**, **load shedding**, **connectivity impact**, and **geodesic vulnerability**. | Critical loads are determined by adopting the approach described in, which uses AHP to weigh **electrical metrics** (e.g., effective graph resistance) and **topological metrics** (e.g., connectivity impact). |
+| **Real-time Feature Normalization Engine** | Ensure that the preprocessing pipeline executes feature normalization for numerical features and **one-hot encoding** for the categorical cyber feature (**packet protocol**) in real-time before feeding the attributes to the GNN model. | All features are given to the model as unaltered numerical data except for the cyber feature indicating the **packet protocol where one hot encoding is applied**. |
+
+The enhancement features ensure that the SaaS product transitions from a validated research concept (IEEE 14/30-bus) to a utility-grade system capable of operating in complex, dynamic, and large-scale power environments, while staying current with the evolution of stealthy cyber threats.

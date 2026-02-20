@@ -1,0 +1,168 @@
+import torch
+import numpy as np
+import os
+import time
+import sqlite3
+try:
+    from .stgnn_model import STGNN
+except ImportError:
+    from stgnn_model import STGNN
+
+class AIInferenceEngine:
+    """
+    Production-grade inference wrapper for real-time SCADA integration.
+    Provides latency tracking, full softmax distribution, and graceful error handling.
+    """
+    def __init__(self, model_path="models/stgnn_model.pth"):
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = None
+        
+        # Note: Static edge_index is now handled natively inside STGNN's __init__ for IEEE 9-bus
+        
+        self.attack_labels = ["Normal", "FDI", "DoS", "Replay"]
+        
+        # Phase 6: Initialize SQLite Telemetry Database
+        self.db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "telemetry.db")
+        self._init_db()
+        
+        self._load_model(model_path)
+
+    def _init_db(self):
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS inference_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp REAL,
+                    true_label INTEGER,
+                    pred_label INTEGER,
+                    confidence REAL,
+                    latency_ms REAL
+                )
+            ''')
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"[AI Inference] ❌ Failed to initialize telemetry DB: {e}")
+
+    def _log_to_db(self, true_label, pred_label, confidence, latency_ms):
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO inference_logs (timestamp, true_label, pred_label, confidence, latency_ms)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (time.time(), true_label, pred_label, confidence, latency_ms))
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            # Silent fail for logging to not interrupt SCADA
+            pass
+
+    def _load_model(self, path):
+        if not os.path.exists(path):
+            print(f"[AI Inference] ❌ Model file not found: {path}")
+            return
+        
+        try:
+            # Auto-detect in_channels from saved checkpoint weight shape
+            checkpoint = torch.load(path, map_location=self.device)
+            
+            # Detect in_channels from gat1 linear layer weight shape
+            if 'gat1.lin.weight' in checkpoint:
+                in_channels = checkpoint['gat1.lin.weight'].shape[1]
+            elif 'gat1.lin_src.weight' in checkpoint:
+                in_channels = checkpoint['gat1.lin_src.weight'].shape[1]
+            else:
+                in_channels = 22  # fallback
+            
+            num_classes = 4
+            self.model = STGNN(in_channels=in_channels, hidden_channels=32, out_channels=num_classes)
+            self.model.load_state_dict(checkpoint)
+            self.model.to(self.device)
+            self.model.eval()
+            print(f"[AI Inference] ✅ Model loaded: in_channels={in_channels}, from {path}")
+        except Exception as e:
+            print(f"[AI Inference] ❌ Error loading model: {e}")
+
+    def predict(self, features, true_label=None):
+        """
+        Executes inference with strict latency tracking and exhaustive probability metrics.
+        """
+        start_time = time.perf_counter()
+        
+        if self.model is None:
+            return {
+                "prediction": 0, 
+                "attack_label": "Unknown",
+                "confidence": 0.0, 
+                "probabilities": {},
+                "latency_ms": 0.0, 
+                "status": "error_model_not_loaded"
+            }
+        
+        try:
+            features = np.array(features)
+            
+            # Phase 8: IEEE 9-Bus Shape Requirement -> [Batch(1), Time(10), Nodes(9), Features(6)]
+            window_size = 10
+            num_nodes = 9
+            num_features = 6
+            
+            # Expected flat array from SCADA feeder is 540 elements (10 * 9 * 6)
+            if features.size == 540:
+                # Proper IEEE 9-Bus formatting
+                features_4d = features.reshape(1, window_size, num_nodes, num_features)
+            else:
+                # Fallback to map the old 18-feature data (3 nodes * 6 features) 
+                # into 9 nodes by padding with zeros (temporary bridge during integration)
+                print(f"[AI Inference] ⚠️ Warning: Received {features.size} elements. Mapping to 9-bus space.")
+                # Assumes incoming feature array is shape (10, 18) flattened to 180
+                features_2d = features.reshape(window_size, 18) # [10, 18]
+                features_4d = np.zeros((1, window_size, num_nodes, num_features))
+                # Map old 3-buses to the first 3 buses of the 9-bus structure
+                features_4d[0, :, 0:3, :] = features_2d.reshape(window_size, 3, 6)
+            
+            x_tensor = torch.tensor(features_4d, dtype=torch.float32).to(self.device)
+            
+            with torch.no_grad():
+                # Forward pass: the new STGNN handles its own edge_index mapping
+                logits = self.model(x_tensor)
+                
+                # Softmax output
+                probs = torch.softmax(logits, dim=0)
+                pred = torch.argmax(probs).item()
+                conf = probs[pred].item()
+                
+                # Full probability distribution for academic review / telemetry
+                prob_dict = {
+                    self.attack_labels[i]: round(probs[i].item(), 4) for i in range(len(self.attack_labels))
+                }
+                
+            latency_ms = (time.perf_counter() - start_time) * 1000.0
+            
+            # Use true_label if provided by SCADA, else fallback to pred
+            actual_label = pred if true_label is None else true_label
+            self._log_to_db(true_label=actual_label, pred_label=pred, confidence=conf, latency_ms=latency_ms)
+            
+            return {
+                "prediction": pred,
+                "attack_label": self.attack_labels[pred],
+                "confidence": conf,
+                "probabilities": prob_dict,
+                "latency_ms": round(latency_ms, 2),
+                "status": "success"
+            }
+            
+        except Exception as e:
+            print(f"[AI Inference] ❌ Inference error: {e}")
+            return {
+                "prediction": 0, 
+                "attack_label": "Unknown",
+                "confidence": 0.0, 
+                "probabilities": {}, 
+                "latency_ms": 0.0, 
+                "status": "error", 
+                "message": str(e)
+            }

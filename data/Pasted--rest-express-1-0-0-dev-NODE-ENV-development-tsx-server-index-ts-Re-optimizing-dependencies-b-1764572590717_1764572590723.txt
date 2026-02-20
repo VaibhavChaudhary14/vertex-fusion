@@ -1,0 +1,101 @@
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+Re-optimizing dependencies because lockfile has changed
+6:46:56 AM [express] serving on port 5000
+6:47:14 AM [express] GET /api/auth/user 401 in 5ms :: {"message":"Unauthorized"}
+6:47:44 AM [express] GET /api/auth/user 200 in 444ms :: {"id":"50482507","email":"vaibhav14ry@gmail.com","firstName":null,"lastName":null,"profileImageUrl":null,"passwordHash":null,"isEmailVerified":false,"emailVerificationToken":null,"resetPasswordToken":null,"resetPasswordTokenExpiry":null,"role":"researcher","subscriptionTier":"free","apiCallsUsed":0,"apiCallsLimit":100,"createdAt":"2025-12-01T04:47:22.890Z","updatedAt":"2025-12-01T04:47:22.890Z"}
+6:47:45 AM [express] GET /api/health 304 in 81ms :: {"securityIndex":94.2,"detectionRate":97.8,"falseAlarmRate":2.1,"gridReliabilityScore":99.1,"activeSimulations":3,"alertsLast24h":"0"}
+6:47:50 AM [express] GET /api/health 304 in 48ms :: {"securityIndex":94.2,"detectionRate":97.8,"falseAlarmRate":2.1,"gridReliabilityScore":99.1,"activeSimulations":3,"alertsLast24h":"0"}
+6:48:17 AM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+6:48:31 AM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+6:48:31 AM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+6:48:55 AM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+6:49:22 AM [express] GET /api/auth/google 200 in 5ms
+6:49:28 AM [express] GET /api/auth/user 401 in 2ms :: {"message":"Unauthorized"}
+6:49:52 AM [express] GET /api/auth/google 200 in 3ms
+6:49:57 AM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+6:49:59 AM [express] GET /api/auth/user 401 in 2ms :: {"message":"Unauthorized"}
+6:50:07 AM [express] GET /api/auth/google 200 in 5ms
+6:50:13 AM [express] GET /api/auth/user 401 in 3ms :: {"message":"Unauthorized"}
+6:50:17 AM [express] GET /api/auth/user 401 in 2ms :: {"message":"Unauthorized"}
+6:50:17 AM [express] GET /api/auth/google 200 in 5ms
+6:50:24 AM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+6:50:28 AM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+6:50:29 AM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+6:50:43 AM [express] GET /api/auth/google 200 in 6ms
+6:50:48 AM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+6:51:07 AM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+📝 Creating user: radha@gmail.com
+[2025-12-01T06:52:09.303Z] 📧 [Email] Sending to: radha@gmail.com | Subject: Verify your Vertex Fusion account | Attempt: 1/3
+[2025-12-01T06:52:10.318Z] ✅ [Email] Sent successfully to: radha@gmail.com | MessageId: <f685f2ac-a0b7-817c-47cc-fbc11fa9d403@gridguardian.ai>
+6:52:10 AM [express] POST /api/auth/signup 200 in 1733ms :: {"success":true,"message":"Account created! Please check your email to verify your account.","userId":"radha@gmail.com","requiresEmailVerification":true}
+📝 Creating user: pawneshk22@gmail.com
+[2025-12-01T06:52:11.704Z] 📧 [Email] Sending to: pawneshk22@gmail.com | Subject: Verify your Vertex Fusion account | Attempt: 1/3
+[2025-12-01T06:52:12.518Z] ❌ [Email] Error: Data command failed: 550 5.7.0 Too many emails per second. Please upgrade your plan https://mailtrap.io/billing/plans/testing
+⚠️ [Auth] Email verification send failed for pawneshk22@gmail.com: Data command failed: 550 5.7.0 Too many emails per second. Please upgrade your plan https://mailtrap.io/billing/plans/testing
+6:52:12 AM [express] POST /api/auth/signup 200 in 967ms :: {"success":true,"message":"Account created! Please check your email to verify your account.","userId":"pawneshk22@gmail.com","requiresEmailVerification":true}
+6:52:27 AM [express] GET /api/auth/user 304 in 115ms :: {"id":"39478256","email":"14vaibhav2002@gmail.com","firstName":null,"lastName":null,"profileImageUrl":null,"passwordHash":null,"isEmailVerified":false,"emailVerificationToken":null,"resetPasswordToken":null,"resetPasswordTokenExpiry":null,"role":"researcher","subscriptionTier":"free","apiCallsUsed":1,"apiCallsLimit":100,"createdAt":"2025-11-30T17:28:44.406Z","updatedAt":"2025-11-30T21:28:01.260Z"}
+7:00:19 AM [express] GET /api/auth/user 401 in 2ms :: {"message":"Unauthorized"}
+7:02:19 AM [vite] hmr update /src/App.tsx?v=8X4k41l01ahCQfg3l9iR4, /src/index.css?v=8X4k41l01ahCQfg3l9iR4
+7:02:19 AM [vite] hmr update /src/pages/Landing.tsx, /src/index.css?v=8X4k41l01ahCQfg3l9iR4
+7:02:19 AM [vite] hmr update /src/pages/SignUp.tsx, /src/index.css?v=8X4k41l01ahCQfg3l9iR4
+7:02:19 AM [vite] hmr update /src/components/DatasetGenerator.tsx, /src/index.css?v=8X4k41l01ahCQfg3l9iR4, /src/components/SimulationResults.tsx, /src/components/VirtualLabControls.tsx
+[Browserslist] Could not parse /home/runner/workspace/package.json. Ignoring it.
+[replit-cartographer] Error processing /home/runner/workspace/client/src/App.tsx: SyntaxError: Unexpected token (15:1)
+    at toParseError (/home/runner/workspace/node_modules/@babel/parser/src/parse-error.ts:95:45)
+    at raise (/home/runner/workspace/node_modules/@babel/parser/src/tokenizer/index.ts:1503:19)
+    at unexpected (/home/runner/workspace/node_modules/@babel/parser/src/tokenizer/index.ts:1543:16)
+    at jsxParseIdentifier (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:278:14)
+    at jsxParseNamespacedName (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:288:25)
+    at jsxParseElementName (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:306:14)
+    at jsxParseOpeningElementAt (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:429:24)
+    at jsxParseElementAt (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:470:35)
+    at jsxParseElement (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:559:19)
+    at parseExprAtom (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:573:21)
+    at parseExprSubscripts (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:734:23)
+    at parseUpdate (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:713:21)
+    at parseMaybeUnary (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:675:23)
+    at parseMaybeUnary (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3855:20)
+    at parseMaybeUnaryOrPrivate (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:409:14)
+    at parseExprOps (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:421:23)
+    at parseMaybeConditional (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:376:23)
+    at parseMaybeAssign (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:301:21)
+    at fn (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3708:23)
+    at tryParse (/home/runner/workspace/node_modules/@babel/parser/src/parser/util.ts:174:20)
+    at parseMaybeAssign (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3707:20)
+    at parseExpressionBase (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:226:23)
+    at callback (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:217:39)
+    at allowInAnd (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:3187:16)
+    at parseExpression (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:217:17)
+    at parseStatementContent (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:683:23)
+    at parseStatementContent (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3185:20)
+    at parseStatementLike (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:477:17)
+    at parseModuleItem (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:414:17)
+    at parseBlockOrModuleBlockBody (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:1438:16)
+    at parseBlockBody (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:1412:10)
+    at parseProgram (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:229:10)
+    at parseTopLevel (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:203:25)
+    at parse (/home/runner/workspace/node_modules/@babel/parser/src/parser/index.ts:93:10)
+    at parse (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:4309:20)
+    at parse (/home/runner/workspace/node_modules/@babel/parser/src/index.ts:92:38)
+    at TransformPluginContext.handler (/home/runner/workspace/node_modules/@replit/vite-plugin-cartographer/dist/index.mjs:74:23)
+    at PluginContainer.transform (/home/runner/workspace/node_modules/vite/dist/node/chunks/dep-D_zLpgQd.js:49100:19)
+    at loadAndTransform (/home/runner/workspace/node_modules/vite/dist/node/chunks/dep-D_zLpgQd.js:51977:49)
+    at async Proxy.warmupRequest (/home/runner/workspace/node_modules/vite/dist/node/chunks/dep-D_zLpgQd.js:63101:9) {
+  code: 'BABEL_PARSER_SYNTAX_ERROR',
+  reasonCode: 'UnexpectedToken',
+  loc: Position { line: 15, column: 1, index: 719 },
+  pos: 719,
+  syntaxPlugin: undefined
+}
+[Browserslist] Could not parse /home/runner/workspace/package.json. Ignoring it.
+7:02:34 AM [vite] Pre-transform error: /home/runner/workspace/client/src/App.tsx: Unexpected token (15:1)
+
+  13 | import Landing from "@/pages/Landing";
+  14 | import SignUp from "@/pages/SignUp";
+> 15 | <<<<<<< HEAD
+     |  ^
+  16 | import Login from "@/pages/Login";
+  17 | import ForgotPassword from "@/pages/ForgotPassword";
+  18 | import ResetPassword from "@/pages/ResetPassword";
