@@ -1,8 +1,14 @@
+<<<<<<< HEAD
 @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Jost:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
+=======
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;700;900&display=swap');
+
+>>>>>>> 683a7fa88ce8ce335aeaeecef293720c53b381b0
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+<<<<<<< HEAD
 /* LIGHT MODE - Unique Violet/Teal/Rose Fusion */
 :root {
   --button-outline: rgba(124, 58, 255, 0.1);
@@ -381,4 +387,44 @@
   .no-default-active-elevate:active {
     transform: none !important;
   }
+=======
+@layer base {
+  body {
+    @apply bg-neo-bg text-neo-dark font-sans;
+  }
+  h1, h2, h3, h4 {
+    @apply font-mono font-bold tracking-tight;
+  }
+}
+
+.neo-box {
+  @apply border-2 border-black shadow-neo bg-white transition-all duration-200;
+}
+
+.neo-box:hover {
+  @apply translate-x-[2px] translate-y-[2px] shadow-neo-sm;
+}
+
+.neo-box:active {
+  @apply translate-x-[5px] translate-y-[5px] shadow-none;
+}
+
+.neo-btn {
+  @apply px-6 py-3 font-bold border-2 border-black bg-neo-primary text-white shadow-neo transition-all hover:bg-opacity-90 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none;
+}
+
+/* Glitch Animation Keyframes */
+@keyframes glitch {
+  0% { transform: translate(0) }
+  20% { transform: translate(-2px, 2px) }
+  40% { transform: translate(-2px, -2px) }
+  60% { transform: translate(2px, 2px) }
+  80% { transform: translate(2px, -2px) }
+  100% { transform: translate(0) }
+}
+
+.glitch-active {
+  animation: glitch 0.2s cubic-bezier(.25, .46, .45, .94) both infinite;
+  color: #F43F5E; 
+>>>>>>> 683a7fa88ce8ce335aeaeecef293720c53b381b0
 }
