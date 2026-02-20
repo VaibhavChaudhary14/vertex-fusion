@@ -61,7 +61,7 @@ export function AttackTypeMatrix() {
             </div>
             <div className="flex flex-wrap gap-1">
               {attack.commonNodes.map((node) => (
-                <Badge key={node} variant="ghost" className="text-xs">
+                <Badge key={node} variant="outline" className="text-xs">
                   {node}
                 </Badge>
               ))}

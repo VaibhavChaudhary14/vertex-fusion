@@ -103,7 +103,7 @@ function AttackFlowStep({ step, attack }: { step: any; attack: string }) {
   return (
     <div className="flex items-start gap-4">
       <div className="flex flex-col items-center gap-2">
-        <Badge className={`w-8 h-8 flex items-center justify-center rounded-full ${colorMap[step.color] || ''}`}>
+        <Badge className={`w-8 h-8 flex items-center justify-center rounded-full ${colorMap[step.color as keyof typeof colorMap] || ''}`}>
           {step.step}
         </Badge>
         {step.step < (attack === 'fdi' ? 7 : 5) && (
