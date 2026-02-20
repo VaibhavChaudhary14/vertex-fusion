@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Activity, AlertTriangle, Shield, Zap, TrendingUp, Clock, Power, Play, Square, RotateCcw, Wifi, WifiOff } from "lucide-react";
+import { Activity, AlertTriangle, Shield, Zap, TrendingUp, Clock, Power, Play, Square, RotateCcw, Wifi, WifiOff, Terminal } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -70,12 +70,27 @@ export default function Dashboard() {
   const threatIdRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // ── Network Telemetry Logs ────────────────────────────────────────────────
+  const [networkLogs, setNetworkLogs] = useState<{ id: number, time: string, msg: string, type: 'sent' | 'received' | 'info' }[]>([]);
+  const logIdRef = useRef(0);
+
+  const addLog = useCallback((msg: string, type: 'sent' | 'received' | 'info' = 'info') => {
+    const now = new Date();
+    const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
+    setNetworkLogs(prev => {
+      const newLogs = [{ id: logIdRef.current++, time, msg, type }, ...prev].slice(0, 50);
+      return newLogs;
+    });
+  }, []);
+
   // ── Poll measurements ─────────────────────────────────────────────────────
   const poll = useCallback(async () => {
     try {
-      const res = await fetch("/api/simulator/measurements");
+      addLog("GET /metrics -> Polling Python FastAPI (54 features)", "sent");
+      const res = await fetch("/api/simulator/metrics");
       if (!res.ok) { setSimConnected(false); return; }
       const data: GridState = await res.json();
+      addLog(`200 OK -> Received state (Loss: ${data.packet_loss?.toFixed(1)}%)`, "received");
       setSimConnected(true);
       setLatestState(data);
 
@@ -131,9 +146,11 @@ export default function Dashboard() {
   // ── Poll ROC metrics ──────────────────────────────────────────────────────
   const pollRoc = useCallback(async () => {
     try {
+      addLog("GET /metrics/roc -> Fetching ML ROC Truths", "sent");
       const res = await fetch("/api/simulator/metrics/roc");
       if (!res.ok) return;
       const data = await res.json();
+      addLog(`200 OK -> Processed ${data.records?.length || 0} SQLite inferences`, "received");
       if (!data.records || data.records.length === 0) return;
 
       const points = data.records.map((r: any) => ({
@@ -194,6 +211,7 @@ export default function Dashboard() {
   // ── Attack injection ──────────────────────────────────────────────────────
   const injectAttack = async (type: string) => {
     setSelectedAttack(type);
+    addLog(`POST /attack -> Pushing ${type} vector to Python Engine`, "sent");
     try {
       await fetch("/api/simulator/attack", {
         method: "POST",
@@ -208,6 +226,7 @@ export default function Dashboard() {
 
   // ── Breaker control ───────────────────────────────────────────────────────
   const setBreakerStatus = async (action: "TRIP" | "CLOSE") => {
+    addLog(`POST /protection -> TCP Relay to MATLAB (${action})`, "sent");
     try {
       await fetch("/api/simulator/protection", {
         method: "POST",
@@ -506,6 +525,35 @@ export default function Dashboard() {
               <div className="col-span-6 text-center py-6 text-muted-foreground text-sm">
                 Start the simulation to see live readings.
               </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Network Trace Console ── */}
+      <Card className="border border-border">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Terminal className="w-4 h-4 text-primary" /> Network Telemetry Trace
+          </CardTitle>
+          <CardDescription>Explicit communication trace: Frontend ↔ Python FastAPI ↔ MATLAB TCP</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="bg-[#0a0a0a] border border-[#1a1a1a] font-mono text-xs p-4 rounded-md h-[200px] overflow-y-auto space-y-1">
+            {networkLogs.length === 0 ? (
+              <span className="opacity-50 text-green-500">Waiting for network traffic...</span>
+            ) : (
+              networkLogs.map(log => (
+                <div key={log.id} className="flex gap-3 border-b border-green-900/20 pb-1">
+                  <span className="text-muted-foreground shrink-0 w-24">[{log.time}]</span>
+                  <span className={`shrink-0 w-16 font-bold ${log.type === 'sent' ? 'text-blue-400' : log.type === 'received' ? 'text-green-400' : 'text-gray-400'}`}>
+                    {log.type === 'sent' ? '↑ OUT' : log.type === 'received' ? '↓ IN ' : 'ℹ SYS'}
+                  </span>
+                  <span className={log.type === 'sent' ? 'text-blue-300 break-all' : log.type === 'received' ? 'text-green-300 break-all' : 'text-gray-300 break-all'}>
+                    {log.msg}
+                  </span>
+                </div>
+              ))
             )}
           </div>
         </CardContent>
