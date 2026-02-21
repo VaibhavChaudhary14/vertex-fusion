@@ -22,6 +22,7 @@ import Profile from "@/pages/Profile";
 import BackendSetup from "@/pages/BackendSetup";
 import MLDatasetsAndModels from "@/pages/MLDatasetsAndModels";
 import PythonUtilities from "@/pages/PythonUtilities";
+import Analytics from "@/pages/Analytics";
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const sidebarStyle = {
@@ -78,6 +79,9 @@ function Router() {
       </Route>
       <Route path="/explainability">
         {() => <AppRoute component={Explainability} />}
+      </Route>
+      <Route path="/analytics">
+        {() => <AppRoute component={Analytics} />}
       </Route>
       <Route path="/datasets">
         {() => <AppRoute component={Datasets} />}

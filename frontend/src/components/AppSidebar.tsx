@@ -53,9 +53,14 @@ const mainNavItems = [
 
 const analyticsItems = [
   {
+    title: "Model Analytics",
+    url: "/analytics",
+    icon: Activity,
+  },
+  {
     title: "Explainable AI (XAI)",
     url: "/explainability",
-    icon: Activity,
+    icon: Shield,
   },
   {
     title: "Threat Feed",

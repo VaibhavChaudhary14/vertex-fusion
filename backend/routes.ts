@@ -522,18 +522,30 @@ Format responses with clear structure using markdown when helpful.`;
       const response = await fetch(`${SIM_SERVICE_URL}/metrics`);
       if (!response.ok) throw new Error("Simulation service error");
       const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Simulator API Error:", error);
+      res.status(503).json({ error: "Simulation service unavailable", details: String(error) });
+    }
+  });
 
-      // Transform python state to frontend format if needed
-      // Frontend expects array of measurements? The previous mock returned an array.
-      // But the Python service returns a single current state object.
-      // We should probably adapt the frontend to handle the single state or 
-      // mock a history here if the frontend absolutely needs it.
-      // However, for real-time dashboard, single state is usually what's polled.
-      // Let's return the simplified state for now and we might need to adjust frontend.
+  app.get("/api/simulator/metrics", async (req, res) => {
+    try {
+      const response = await fetch(`${SIM_SERVICE_URL}/metrics`);
+      if (!response.ok) throw new Error("Simulation service error");
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Simulator API Error:", error);
+      res.status(503).json({ error: "Simulation service unavailable", details: String(error) });
+    }
+  });
 
-      // Previous mock: Array of 50 items.
-      // Current Python: { timestamp, voltages, prediction, confidence, status, attack_type, breaker_status }
-
+  app.get("/api/simulator/metrics/roc", async (req, res) => {
+    try {
+      const response = await fetch(`${SIM_SERVICE_URL}/metrics/roc`);
+      if (!response.ok) throw new Error("Simulation service error");
+      const data = await response.json();
       res.json(data);
     } catch (error) {
       console.error("Simulator API Error:", error);
