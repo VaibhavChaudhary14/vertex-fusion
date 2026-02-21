@@ -5,29 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useToast } from "@/hooks/use-toast";
+import IEEE9BusSLD from "@/components/IEEE9BusSLD";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-interface GridState {
-  timestamp: number;
-  bus1_voltage: number; bus2_voltage: number; bus3_voltage: number;
-  bus4_voltage: number; bus5_voltage: number; bus6_voltage: number;
-  bus7_voltage: number; bus8_voltage: number; bus9_voltage: number;
-
-  bus1_current: number; bus2_current: number; bus3_current: number;
-  bus4_current: number; bus5_current: number; bus6_current: number;
-  bus7_current: number; bus8_current: number; bus9_current: number;
-
-  frequency: number;
-  packet_loss: number;
-  prediction: number;
-  confidence: number;
-  status: string;
-  attack_type: string;
-  breaker_status: string;
-  latency_ms: number;
-  probabilities: Record<string, number>;
-}
+import { GridState } from "@/types/grid";
 
 interface ChartPoint {
   t: string;
@@ -298,17 +278,17 @@ export default function Dashboard() {
           { icon: Power, label: "Breaker", value: breakerOpen ? "OPEN" : "CLOSED", color: breakerOpen ? "text-destructive" : "text-primary" },
         ].map(({ icon: Icon, label, value, color }, i) => (
           <Card key={i} className="border border-border">
-            <CardHeader className="pb-2 pt-4 px-4">
-              <CardTitle className="text-xs text-muted-foreground flex items-center gap-1">
-                <Icon className="w-3 h-3" /> {label}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-4">
-              <p className={`text-xl font-bold font-mono ${color}`}>{String(value)}</p>
+            <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+              <Icon className={`w-5 h-5 mb-1 ${color}`} />
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">{label}</p>
+              <p className={`text-xl font-bold font-mono ${color}`}>{value}</p>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {/* ── IEEE 9-Bus Single Line Diagram ── */}
+      <IEEE9BusSLD state={latestState} />
 
       {/* ── Charts row ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

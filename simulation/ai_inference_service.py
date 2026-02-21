@@ -66,23 +66,13 @@ class AIInferenceEngine:
             return
         
         try:
-            # Auto-detect in_channels from saved checkpoint weight shape
-            checkpoint = torch.load(path, map_location=self.device)
-            
-            # Detect in_channels from gat1 linear layer weight shape
-            if 'gat1.lin.weight' in checkpoint:
-                in_channels = checkpoint['gat1.lin.weight'].shape[1]
-            elif 'gat1.lin_src.weight' in checkpoint:
-                in_channels = checkpoint['gat1.lin_src.weight'].shape[1]
-            else:
-                in_channels = 22  # fallback
-            
             num_classes = 4
-            self.model = STGNN(in_channels=in_channels, hidden_channels=32, out_channels=num_classes)
+            self.model = STGNN(in_channels=6, hidden_channels=32, out_channels=num_classes)
+            checkpoint = torch.load(path, map_location=self.device)
             self.model.load_state_dict(checkpoint)
             self.model.to(self.device)
             self.model.eval()
-            print(f"[AI Inference] ✅ Model loaded: in_channels={in_channels}, from {path}")
+            print(f"[AI Inference] [SUCCESS] Model loaded (9-Bus, 6 Channels) from {path}")
         except Exception as e:
             print(f"[AI Inference] ❌ Error loading model: {e}")
 
@@ -112,17 +102,10 @@ class AIInferenceEngine:
             
             # Expected flat array from SCADA feeder is 540 elements (10 * 9 * 6)
             if features.size == 540:
-                # Proper IEEE 9-Bus formatting
                 features_4d = features.reshape(1, window_size, num_nodes, num_features)
             else:
-                # Fallback to map the old 18-feature data (3 nodes * 6 features) 
-                # into 9 nodes by padding with zeros (temporary bridge during integration)
-                print(f"[AI Inference] ⚠️ Warning: Received {features.size} elements. Mapping to 9-bus space.")
-                # Assumes incoming feature array is shape (10, 18) flattened to 180
-                features_2d = features.reshape(window_size, 18) # [10, 18]
-                features_4d = np.zeros((1, window_size, num_nodes, num_features))
-                # Map old 3-buses to the first 3 buses of the 9-bus structure
-                features_4d[0, :, 0:3, :] = features_2d.reshape(window_size, 3, 6)
+                # Direct error instead of padding to avoid shape mismatch in GNN layers
+                raise ValueError(f"Expected 540 features (10x9x6), but received {features.size}")
             
             x_tensor = torch.tensor(features_4d, dtype=torch.float32).to(self.device)
             
@@ -184,9 +167,7 @@ class AIInferenceEngine:
             if features.size == 540:
                 features_4d = features.reshape(1, window_size, num_nodes, num_features)
             else:
-                features_2d = features.reshape(window_size, 18)
-                features_4d = np.zeros((1, window_size, num_nodes, num_features))
-                features_4d[0, :, 0:3, :] = features_2d.reshape(window_size, 3, 6)
+                raise ValueError(f"Explainability requires 540 features, got {features.size}")
                 
             x_tensor = torch.tensor(features_4d, dtype=torch.float32, requires_grad=True).to(self.device)
             

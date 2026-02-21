@@ -1,17 +1,14 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch_geometric.data import Data
-from torch_geometric.loader import DataLoader
-from torch_geometric.nn import GATConv
+from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
 import os
+import sys
 from sklearn.metrics import classification_report, confusion_matrix
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 # -----------------------------
-# 1️⃣ Load preprocessed data
+# 1. Load preprocessed data
 # -----------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "datasets")
@@ -21,110 +18,100 @@ def load_data():
     y_path = os.path.join(DATA_DIR, "y_windows.npy")
     
     if not os.path.exists(X_path) or not os.path.exists(y_path):
-        print(f"❌ Data files not found in {DATA_DIR}")
+        print(f"[ERROR] Data files not found in {DATA_DIR}")
         return None, None
 
     X = np.load(X_path)
     y = np.load(y_path)
-    print(f"✅ Loaded: X {X.shape}, y {y.shape}")
+    print(f"[SUCCESS] Loaded: X {X.shape}, y {y.shape}")
     return X, y
 
 # -----------------------------
-# 2️⃣ Data Reshaping Setup
+# 2. Training Loop
 # -----------------------------
-window_size = 10
-num_nodes = 3
-
-def reshape_to_graph(sample, label):
-    """Convert flattened sample to pseudo-graph."""
-    sample = sample.reshape(window_size, -1)
-    last_t = sample[-1]
-    node_feats = np.tile(last_t, (num_nodes, 1))  # same features across nodes
-    edge_index = torch.tensor([
-        [0, 1, 1, 2, 2, 0],
-        [1, 0, 2, 1, 0, 2]
-    ], dtype=torch.long)
-
-    data = Data(x=torch.tensor(node_feats, dtype=torch.float),
-                edge_index=edge_index,
-                y=torch.tensor(int(label)))
-    return data
-
-# -----------------------------
-# 3️⃣ Define ST-GNN Model
-# -----------------------------
-class STGNN(nn.Module):
-    def __init__(self, in_channels, hidden_channels, out_channels):
-        super(STGNN, self).__init__()
-        self.gat1 = GATConv(in_channels, hidden_channels, heads=2, dropout=0.2)
-        self.gat2 = GATConv(hidden_channels * 2, hidden_channels, heads=1, dropout=0.2)
-        self.temporal_conv = nn.Conv1d(in_channels=hidden_channels, out_channels=hidden_channels, kernel_size=3, padding=1)
-        self.flatten = nn.Flatten()
-        self.fc = nn.Sequential(
-            nn.Linear(hidden_channels * num_nodes, 64),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(64, out_channels)
-        )
-
-    def forward(self, data):
-        x, edge_index = data.x, data.edge_index
-        x = self.gat1(x, edge_index)
-        x = torch.relu(x)
-        x = self.gat2(x, edge_index)
-        x = torch.relu(x)
-
-        x_t = x.unsqueeze(0).permute(0, 2, 1)  # [1, feat, nodes]
-        x_t = self.temporal_conv(x_t)
-        x_t = torch.relu(x_t).view(1, -1)
-        out = self.fc(x_t)
-        return out.squeeze(0)  # shape [4]
-
 def train_model():
     X, y = load_data()
     if X is None: return
 
-    features_per_timestep = X.shape[1] // window_size
-    features_per_node = features_per_timestep
+    # Parameters
+    window_size = 10
+    num_nodes = 9
+    num_features = 6
+    num_classes = 4
     
-    graphs = [reshape_to_graph(X[i], y[i]) for i in range(len(X))]
+    # Create TensorDataset
+    dataset = TensorDataset(torch.tensor(X, dtype=torch.float32), torch.tensor(y, dtype=torch.long))
 
     # Split train/test
-    split_idx = int(0.8 * len(graphs))
-    train_graphs = graphs[:split_idx]
-    test_graphs = graphs[split_idx:]
+    train_size = int(0.8 * len(dataset))
+    test_size = len(dataset) - train_size
+    train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
 
-    train_loader = DataLoader(train_graphs, batch_size=32, shuffle=True)
-    test_loader = DataLoader(test_graphs, batch_size=32)
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=32)
 
-    model = STGNN(in_channels=features_per_node, hidden_channels=32, out_channels=4)
-    print(model)
+    # Import STGNN from neighboring file
+    try:
+        from stgnn_model import STGNN
+    except ImportError:
+        from .stgnn_model import STGNN
+
+    model = STGNN(in_channels=6, hidden_channels=32, out_channels=num_classes)
+    print(f"[SUCCESS] ST-GNN Initialized for 9 Nodes. Training on {device_str := 'GPU' if torch.cuda.is_available() else 'CPU'}")
+    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
-    epochs = 10
+    epochs = 5 # Sufficient for synthetic verification
+
+    print(f"Starting Training ({epochs} epochs)...", flush=True)
 
     for epoch in range(epochs):
         model.train()
         total_loss = 0
-        for batch in train_loader:
+        for i, (x_batch, y_batch) in enumerate(train_loader):
+            x_batch, y_batch = x_batch.to(device), y_batch.to(device)
+            
             optimizer.zero_grad()
-            batch_loss = 0
-            for graph in batch.to_data_list():
-                out = model(graph)
-                loss = criterion(out.unsqueeze(0), graph.y.view(-1))
-                batch_loss += loss
-
-            batch_loss.backward()
+            
+            # Reshape [B, 540] -> [B, 10, 9, 6]
+            x_batch = x_batch.reshape(-1, window_size, num_nodes, num_features)
+            
+            logits = model(x_batch)
+            loss = criterion(logits, y_batch)
+            
+            loss.backward()
             optimizer.step()
-            total_loss += batch_loss.item()
-        print(f"Epoch {epoch+1}/{epochs} - Loss: {total_loss/len(train_loader):.4f}")
+            total_loss += loss.item()
+            
+            if (i+1) % 20 == 0:
+                print(f"  Epoch {epoch+1} | Batch {i+1}/{len(train_loader)} | Loss: {loss.item():.4f}", flush=True)
+
+        avg_loss = total_loss / len(train_loader)
+        print(f"Epoch {epoch+1}/{epochs} Complete. Avg Loss: {avg_loss:.4f}", flush=True)
+
+    # Quick Eval
+    model.eval()
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for x_batch, y_batch in test_loader:
+            x_batch, y_batch = x_batch.to(device), y_batch.to(device)
+            x_batch = x_batch.reshape(-1, window_size, num_nodes, num_features)
+            logits = model(x_batch)
+            preds = torch.argmax(logits, dim=1)
+            correct += (preds == y_batch).sum().item()
+            total += y_batch.size(0)
+    
+    print(f"[SUCCESS] Test Accuracy: {100 * correct / total:.2f}%")
 
     # Save model
     model_path = os.path.join(BASE_DIR, "models", "stgnn_model.pth")
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
     torch.save(model.state_dict(), model_path)
-    print(f"✅ ST-GNN model saved to {model_path}")
+    print(f"[SUCCESS] ST-GNN model saved to: {model_path}")
 
 if __name__ == "__main__":
     train_model()

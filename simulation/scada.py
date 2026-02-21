@@ -61,7 +61,7 @@ def get_latest_state():
 
 def run_scada_server(host="0.0.0.0", port=5020):
     # Load Data
-    csv_path = os.path.join(DATA_DIR, "ieee9_dynamic_dataset.csv")
+    csv_path = os.path.join(DATA_DIR, "ieee9_telemetry_windows.csv")
     scaler_path = os.path.join(DATA_DIR, "scaler.joblib")
     
     if os.path.exists(csv_path):
@@ -109,7 +109,7 @@ def run_scada_server(host="0.0.0.0", port=5020):
                 
             idx = i % len(df)
             # If CSV has old 18-feature data, we can only safely extract available columns
-            row_flat = df.iloc[idx].values
+            row_flat = df.iloc[idx].values[:WINDOW_SIZE * NUM_FEATURES]
 
             # Attack injection: perturb the raw values before scaling
             if current_attack["active"]:
