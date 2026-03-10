@@ -181,12 +181,12 @@ export default function Dashboard() {
     if (isRunning) {
       poll(); // immediate first call
       pollRoc();
-      intervalRef.current = setInterval(() => { poll(); pollRoc(); }, 500);
+      intervalRef.current = setInterval(() => { poll(); pollRoc(); }, 200);
     } else {
       if (intervalRef.current) clearInterval(intervalRef.current);
     }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [isRunning, poll]);
+  }, [isRunning, poll, pollRoc]);
 
   // ── Attack injection ──────────────────────────────────────────────────────
   const injectAttack = async (type: string) => {

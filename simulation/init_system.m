@@ -28,4 +28,8 @@ V_Base = 230e3;    % 230 kV Base
 S_Base = 100e6;    % 100 MVA Base
 I_Base = S_Base / (sqrt(3) * V_Base);
 
-fprintf('System parameters calibrated. Load ieee9_vertex_fusion.slx to begin.\n');
+% --4. Line Parameter Correction--
+% If you see "Propagation speed > 300000 km/s", adjust Line L/C constants.
+% Typical values for 230kV lines:
+% R = 0.02 ohms/km, L = 0.8e-3 H/km, C = 15e-9 F/km
+fprintf('System parameters calibrated. Load IEEE_9bus_new_o.slx to begin.\n');

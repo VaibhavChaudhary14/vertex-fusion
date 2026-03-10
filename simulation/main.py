@@ -14,11 +14,11 @@ except ImportError:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    print("🔄 Starting Simulation Engine...")
+    print("[Simulation] Starting Simulation Engine...")
     start_scada_background()
     yield
     # Shutdown
-    print("🛑 Stopping Simulation Engine...")
+    print("[Simulation] Stopping Simulation Engine...")
     stop_scada()
 
 app = FastAPI(title="Vertex Fusion Simulation Engine", lifespan=lifespan)

@@ -50,7 +50,7 @@ current_attack = {
 def set_attack(attack_type):
     current_attack["type"] = attack_type
     current_attack["active"] = True if attack_type != "None" else False
-    print(f"⚠️ Attack set to: {attack_type}")
+    print(f"[Attack] Attack set to: {attack_type}")
 
 def set_breaker(status):
     latest_system_state["breaker_status"] = status
@@ -60,25 +60,29 @@ def get_latest_state():
     return latest_system_state
 
 def run_scada_server(host="0.0.0.0", port=5020):
+    print("[SCADA] Initializing components...")
     # Load Data
     csv_path = os.path.join(DATA_DIR, "ieee9_telemetry_windows.csv")
     scaler_path = os.path.join(DATA_DIR, "scaler.joblib")
     
     if os.path.exists(csv_path):
+        print(f"[SCADA] Loading telemetry data from {csv_path}...")
         df = pd.read_csv(csv_path)
     else:
-        print("⚠️ IEEE-9 CSV not found. Using a dummy 54-feature dataset.")
+        print("[SCADA] IEEE-9 CSV not found. Using a dummy 54-feature dataset.")
         df = pd.DataFrame(np.random.uniform(220, 240, (2000, 540)), columns=[f"col_{j}" for j in range(540)])
 
     # Load Scaler
     scaler = None
     if os.path.exists(scaler_path):
         try:
+            print(f"[SCADA] Loading scaler from {scaler_path}...")
             scaler = joblib.load(scaler_path)
         except:
-            print("⚠️ Could not load scaler.")
+            print("[SCADA] Could not load scaler.")
     
     # Load Inference Engine
+    print("[SCADA] Loading AI Inference Engine...")
     inference_engine = AIInferenceEngine(model_path=os.path.join(BASE_DIR, "models", "stgnn_model.pth"))
     
     # Flag to pause CSV feeder if MATLAB is connected
@@ -160,34 +164,26 @@ def run_scada_server(host="0.0.0.0", port=5020):
 
             # --- Extract bus values from last timestep (unscaled raw) ---
             raw = window[-1]  # last timestep, unscaled
-            V_BASE = 230.0
-            I_BASE = 50.0
             
-            if len(raw) == 54:
+            if len(raw) == NUM_FEATURES:
                 # IEEE 9-bus format: [V_mag, V_ang, P, Q, Freq, I_mag] per node
                 for bus_idx in range(9):
                     idx_start = bus_idx * 6
                     # Use magnitude at idx_start for voltage, idx_start+5 for current
-                    latest_system_state[f"bus{bus_idx+1}_voltage"] = round(float(raw[idx_start]) / V_BASE, 4)
-                    latest_system_state[f"bus{bus_idx+1}_current"] = round((float(raw[idx_start+5]) / I_BASE) * 10, 2)
+                    latest_system_state[f"bus{bus_idx+1}_voltage"] = round(float(raw[idx_start]), 4)
+                    latest_system_state[f"bus{bus_idx+1}_current"] = round(float(raw[idx_start+5]), 2)
             else:
                 # Old 18-feature fallback
-                b1_v = float(np.mean(np.abs(raw[0:3])))
-                b2_v = float(np.mean(np.abs(raw[6:9])))
-                b3_v = float(np.mean(np.abs(raw[12:15])))
-                b1_i = float(np.mean(np.abs(raw[3:6])))
-                b2_i = float(np.mean(np.abs(raw[9:12])))
-                b3_i = float(np.mean(np.abs(raw[15:18])))
-                latest_system_state["bus1_voltage"] = round(b1_v / V_BASE, 4)
-                latest_system_state["bus2_voltage"] = round(b2_v / V_BASE, 4)
-                latest_system_state["bus3_voltage"] = round(b3_v / V_BASE, 4)
-                latest_system_state["bus1_current"] = round(b1_i / I_BASE * 10, 2)
-                latest_system_state["bus2_current"] = round(b2_i / I_BASE * 10, 2)
-                latest_system_state["bus3_current"] = round(b3_i / I_BASE * 10, 2)
+                latest_system_state["bus1_voltage"] = round(float(np.mean(np.abs(raw[0:3]))), 4)
+                latest_system_state["bus2_voltage"] = round(float(np.mean(np.abs(raw[6:9]))), 4)
+                latest_system_state["bus3_voltage"] = round(float(np.mean(np.abs(raw[12:15]))), 4)
+                latest_system_state["bus1_current"] = round(float(np.mean(np.abs(raw[3:6]))), 2)
+                latest_system_state["bus2_current"] = round(float(np.mean(np.abs(raw[9:12]))), 2)
+                latest_system_state["bus3_current"] = round(float(np.mean(np.abs(raw[15:18]))), 2)
 
             latest_system_state["timestamp"] = time.time()
             if i == 0:
-                print(f"✅ Feeder updating state: pred={pred}, ts={latest_system_state['timestamp']:.1f}")
+                print(f"[Feeder] Updating state: pred={pred}, ts={latest_system_state['timestamp']:.1f}")
             latest_system_state["frequency"] = 50.0 + (pred * 0.05)  # small deviation on attack
             latest_system_state["packet_loss"] = round(pred * 2.5 + np.random.uniform(0, 0.5), 2)
             latest_system_state["prediction"] = pred
@@ -205,11 +201,16 @@ def run_scada_server(host="0.0.0.0", port=5020):
     # Phase 4 & 5: MATLAB TCP Integration
     # ---------------------------
     def matlab_tcp_listener():
+        print("[TCP] Starting MATLAB TCP Listener Thread...")
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        server.bind(("0.0.0.0", 5000))
-        server.listen(1)
-        print("📡 MATLAB TCP Listener running on 0.0.0.0:5000")
+        try:
+            server.bind(("0.0.0.0", 5000))
+            server.listen(1)
+            print("[TCP] MATLAB TCP Listener bound to 0.0.0.0:5000")
+        except Exception as e:
+            print(f"[TCP] MATLAB TCP Listener failed to bind: {e}")
+            return
         
         window_buffer = []
         
@@ -217,7 +218,8 @@ def run_scada_server(host="0.0.0.0", port=5020):
             try:
                 server.settimeout(1.0)
                 conn, addr = server.accept()
-                print(f"✅ MATLAB Simulink Connected from {addr}. Overriding CSV feeder.")
+                latest_system_state["status"] = "MATLAB CONNECTED"
+                print(f"[TCP] MATLAB Simulink Connected from {addr}. Overriding CSV feeder.")
                 matlab_connected["status"] = True
                 
                 def recvall(sock, n):
@@ -324,13 +326,13 @@ def run_scada_server(host="0.0.0.0", port=5020):
                             latest_system_state["latency_ms"] = result.get("latency_ms", 0.0)
                             latest_system_state["probabilities"] = result.get("probabilities", {})
                 
-                print("⚠️ MATLAB disconnected. Falling back to CSV feeder.")
+                print("[TCP] MATLAB disconnected. Falling back to CSV feeder.")
                 matlab_connected["status"] = False
                 conn.close()
             except socket.timeout:
                 continue
             except Exception as e:
-                print(f"⚠️ MATLAB Listener connection reset: {e}")
+                print(f"[TCP] MATLAB Listener connection reset: {e}")
                 matlab_connected["status"] = False
                 
     feed_thread = threading.Thread(target=feeder_to_modbus)
@@ -344,7 +346,7 @@ def run_scada_server(host="0.0.0.0", port=5020):
     # ---------------------------
     # 4️⃣ Start Modbus TCP Server
     # ---------------------------
-    print(f"🚀 Modbus-PLC-Server running on {host}:{port}")
+    print(f"[Modbus] Modbus-PLC-Server running on {host}:{port}")
     StartTcpServer(context, identity=ModbusDeviceIdentification(), address=(host, port))
 
 def start_scada_background():
