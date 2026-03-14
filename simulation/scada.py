@@ -28,8 +28,8 @@ server_thread = None
 stop_event = threading.Event()
 latest_system_state = {
     "timestamp": 0,
-    "bus1_voltage": 1.0, "bus2_voltage": 1.0, "bus3_voltage": 1.0,
-    "bus1_current": 10.0, "bus2_current": 10.0, "bus3_current": 10.0,
+    "bus1_voltage": 1.0, "bus2_voltage": 1.0, "bus3_voltage": 1.0, "bus4_voltage": 1.0, "bus5_voltage": 1.0, "bus6_voltage": 1.0, "bus7_voltage": 1.0, "bus8_voltage": 1.0, "bus9_voltage": 1.0,
+    "bus1_current": 10.0, "bus2_current": 10.0, "bus3_current": 10.0, "bus4_current": 10.0, "bus5_current": 10.0, "bus6_current": 10.0, "bus7_current": 10.0, "bus8_current": 10.0, "bus9_current": 10.0,
     "frequency": 50.0,
     "packet_loss": 0.0,
     "prediction": 0,
