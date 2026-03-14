@@ -38,6 +38,11 @@ latest_system_state = {
     "breaker_status": "CLOSED",
     "latency_ms": 0.0,
     "probabilities": {"Normal": 1.0, "FDI": 0.0, "DoS": 0.0, "Replay": 0.0},
+    "plc_status": {
+        "PLC_Alpha": "NORMAL",
+        "PLC_Beta": "NORMAL",
+        "PLC_Gamma": "NORMAL"
+    },
     "latest_features": []
 }
 
@@ -138,6 +143,28 @@ def run_scada_server(host="0.0.0.0", port=5020):
                     window_scaled = window
             else:
                 window_scaled = window
+            # --- Simulate Network Artifacts ---
+            # Apply packet loss: random drop chance
+            if np.random.random() < (latest_system_state["packet_loss"] / 100.0):
+                # print(f"[SCADA] Packet dropped! (Loss: {latest_system_state['packet_loss']}%)")
+                i += 1
+                time.sleep(0.2)
+                continue
+
+            # Apply communication delay (latency)
+            if latest_system_state["latency_ms"] > 0:
+                time.sleep(latest_system_state["latency_ms"] / 1000.0)
+
+            # --- Multi-PLC Simulation ---
+            # In a real grid, different buses might be handled by different PLCs.
+            # We simulate 3 PLCs: PLC-Alpha (Buses 1-3), PLC-Beta (Buses 4-6), PLC-Gamma (Buses 7-9)
+            plc_assignment = {
+                "PLC_Alpha": [0, 1, 2],
+                "PLC_Beta": [3, 4, 5],
+                "PLC_Gamma": [6, 7, 8]
+            }
+            # For this MVP, we still use one Modbus context but simulate the "staggered" 
+            # or "distributed" nature by updating them in segments or adding PLC-specific noise.
 
             # --- Update Modbus (best-effort) ---
             try:
@@ -203,14 +230,27 @@ def run_scada_server(host="0.0.0.0", port=5020):
             latest_system_state["timestamp"] = time.time()
             if i == 0:
                 print(f"[Feeder] Updating state: pred={pred}, ts={latest_system_state['timestamp']:.1f}")
+            
+            # Dynamic network artifacts based on attack
+            base_latency = 5.0 # ms
+            latest_system_state["latency_ms"] = round(base_latency + (pred * 50.0) + np.random.uniform(0, 5), 2)
+            latest_system_state["packet_loss"] = round(pred * 5.0 + np.random.uniform(0, 0.5), 2)
+            
             latest_system_state["frequency"] = 50.0 + (pred * 0.05)  # small deviation on attack
-            latest_system_state["packet_loss"] = round(pred * 2.5 + np.random.uniform(0, 0.5), 2)
             latest_system_state["prediction"] = pred
             latest_system_state["confidence"] = round(conf, 4)
             latest_system_state["status"] = status_str
             latest_system_state["attack_type"] = current_attack["type"]
-            latest_system_state["latency_ms"] = result.get("latency_ms", 0.0)
             latest_system_state["probabilities"] = result.get("probabilities", {})
+
+            # Update PLC status based on prediction
+            # In a more advanced version, we'd only trip the specific PLC affected.
+            plc_state = "ATTACK" if pred != 0 else "NORMAL"
+            latest_system_state["plc_status"] = {
+                "PLC_Alpha": plc_state,
+                "PLC_Beta": plc_state,
+                "PLC_Gamma": plc_state
+            }
 
             i += 1
             time.sleep(0.2)

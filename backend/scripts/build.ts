@@ -35,13 +35,8 @@ const allowlist = [
 async function buildAll() {
   await rm("dist", { recursive: true, force: true });
 
-<<<<<<<< HEAD:backend/scripts/build.ts
   console.log("building client...");
   await viteBuild({ root: "frontend" });
-========
-  console.log("building frontend...");
-  await viteBuild({ configFile: "frontend/vite.config.ts" });
->>>>>>>> 683a7fa88ce8ce335aeaeecef293720c53b381b0:scripts/build.ts
 
   console.log("building server...");
   const pkg = JSON.parse(await readFile("package.json", "utf-8"));

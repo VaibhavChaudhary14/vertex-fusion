@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "5050:5050"
+    environment:
+      - NODE_ENV=production
+      - SIMULATION_URL=http://simulation:8000
+      - PORT=5050
+    depends_on:
+      - simulation
+    networks:
+      - vertex-net
+
+  simulation:
+    build:
+      context: ./simulation
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - vertex-net
+
+networks:
+  vertex-net:
+    driver: bridge

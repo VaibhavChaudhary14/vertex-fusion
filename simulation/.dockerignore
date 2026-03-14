@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+telemetry.db
+datasets/*.csv
+datasets/*.npy
+models/*.pth
+scaler.joblib

@@ -515,7 +515,7 @@ Format responses with clear structure using markdown when helpful.`;
 
   // ============ SMART GRID SIMULATOR ENDPOINTS ============
 
-  const SIM_SERVICE_URL = "http://127.0.0.1:8000";
+  const SIM_SERVICE_URL = process.env.SIMULATION_URL || "http://127.0.0.1:8000";
 
   app.get("/api/simulator/measurements", async (req, res) => {
     try {
