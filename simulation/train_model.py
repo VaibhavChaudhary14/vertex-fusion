@@ -57,9 +57,9 @@ def train_model():
         from .stgnn_model import STGNN
 
     model = STGNN(in_channels=6, hidden_channels=32, out_channels=num_classes)
-    print(f"[SUCCESS] ST-GNN Initialized for 9 Nodes. Training on {device_str := 'GPU' if torch.cuda.is_available() else 'CPU'}")
-    
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device_name = "GPU" if torch.cuda.is_available() else "CPU"
+    print(f"[SUCCESS] ST-GNN Initialized for 9 Nodes. Training on {device_name}")
     model.to(device)
 
     criterion = nn.CrossEntropyLoss()
