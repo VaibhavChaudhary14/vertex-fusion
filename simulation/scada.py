@@ -94,10 +94,29 @@ def run_scada_server(host="0.0.0.0", port=5020):
     matlab_connected = {"status": False}
     
     # ---------------------------
-    # 2️⃣ Setup Modbus Server Context
+    # 2️⃣ Setup Multi-Node Modbus Servers
     # ---------------------------
-    store = ModbusDeviceContext(hr=ModbusSequentialDataBlock(0, [0]*100))
-    context = ModbusServerContext(store, single=True)
+    def start_plc_server(name, p_port):
+        print(f"[Modbus] Starting {name} on {host}:{p_port}")
+        p_store = ModbusDeviceContext(hr=ModbusSequentialDataBlock(0, [0]*100))
+        p_context = ModbusServerContext(p_store, single=True)
+        # We store the context in a way that the feeder can access it
+        plc_nodes[name] = {"context": p_context, "port": p_port}
+        StartTcpServer(p_context, identity=ModbusDeviceIdentification(), address=(host, p_port))
+
+    # Global dictionary to store PLC contexts
+    plc_nodes = {}
+    
+    plcs = [
+        ("PLC_Alpha", 5020),
+        ("PLC_Beta", 5021),
+        ("PLC_Gamma", 5022)
+    ]
+
+    for name, p_port in plcs:
+        t = threading.Thread(target=start_plc_server, args=(name, p_port))
+        t.daemon = True
+        t.start()
 
     # ---------------------------
     # 3️⃣ Data update function (Simulation Loop)
@@ -166,11 +185,22 @@ def run_scada_server(host="0.0.0.0", port=5020):
             # For this MVP, we still use one Modbus context but simulate the "staggered" 
             # or "distributed" nature by updating them in segments or adding PLC-specific noise.
 
-            # --- Update Modbus (best-effort) ---
+            # --- Update Modbus (Multi-Node) ---
             try:
-                modbus_values = [int(v * 100) for v in window[-1, :10]]
-                context[0].setValues(3, 0, modbus_values)
-            except Exception:
+                # Update all PLCs with their relevant bus data
+                # Alpha: Buses 1-3, Beta: 4-6, Gamma: 7-9
+                for name, node in plc_nodes.items():
+                    buses = plc_assignment[name] # e.g. [0, 1, 2]
+                    # Create a slice of data for this PLC
+                    # idx_start = bus_idx * 6. For 3 buses, we send 18 features.
+                    plc_values = []
+                    for b_idx in buses:
+                        idx_range = b_idx * 6
+                        plc_values.extend([int(v * 100) for v in window[-1, idx_range:idx_range+6]])
+                    
+                    node["context"][0].setValues(3, 0, plc_values)
+            except Exception as e:
+                # print(f"Error updating Modbus nodes: {e}")
                 pass
 
             # --- Run inference ---

@@ -3,8 +3,13 @@ dist
 .git
 .vscode
 .replit
+.config
+.venv
+__pycache__
+*.pyc
 *.log
-simulation
+simulation/datasets
+simulation/models
 9BusSystem_MATLABwithSimulink
 docs
 data

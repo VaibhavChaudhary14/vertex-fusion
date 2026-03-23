@@ -1,23 +1,22 @@
 # Build stage for Frontend and Backend
-FROM node:20-slim AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install
+# Install dependencies (ignoring scripts to avoid cross-platform issues)
+RUN npm install --ignore-scripts
 
 # Copy source code
 COPY . .
 
 # Build the application
-# This script builds both frontend and backend into the /dist folder
-RUN npm run build
+RUN npx tsx backend/scripts/build-server.ts
 
 # Production stage
-FROM node:20-slim
+FROM node:20-alpine
 
 WORKDIR /app
 

@@ -1,6 +1,17 @@
 version: '3.8'
 
 services:
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - vertex-net
+
   backend:
     build:
       context: .
@@ -22,6 +33,9 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+      - "5020:5020"
+      - "5021:5021"
+      - "5022:5022"
     environment:
       - PYTHONUNBUFFERED=1
     networks:
