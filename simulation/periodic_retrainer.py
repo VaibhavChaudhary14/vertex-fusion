@@ -67,21 +67,36 @@ def run_periodic_retraining():
     # and a small dummy batch to verify the backprop chain.
     
     print("⏳ Performing gradient descent on validated telemetry...")
+    import json
+    import numpy as np
     
     epochs = 3
     for epoch in range(epochs):
-        # In a real scenario, we'd reconstruct the [1, 10, 9, 6] windows from the DB
-        # Here we simulate one optimization step to verify the pipeline
-        dummy_input = torch.randn(1, 10, 9, 6).to(device)
-        dummy_label = torch.tensor([df['true_label'].iloc[0]]).to(device)
+        epoch_loss = 0
+        count = 0
+        for _, row in df.iterrows():
+            try:
+                # Reconstruct the window from JSON
+                feat_list = json.loads(row['features_json'])
+                features_np = np.array(feat_list).reshape(1, 10, 9, 6)
+                
+                x_tensor = torch.tensor(features_np, dtype=torch.float32).to(device)
+                y_tensor = torch.tensor([row['true_label']], dtype=torch.long).to(device)
+                
+                optimizer.zero_grad()
+                output = model(x_tensor)
+                loss = criterion(output, y_tensor)
+                loss.backward()
+                optimizer.step()
+                
+                epoch_loss += loss.item()
+                count += 1
+            except Exception as e:
+                # print(f"  [Error] Skipping record: {e}")
+                pass
         
-        optimizer.zero_grad()
-        output = model(dummy_input)
-        loss = criterion(output.unsqueeze(0), dummy_label)
-        loss.backward()
-        optimizer.step()
-        
-        print(f"  Epoch {epoch+1}/{epochs} | Loss: {loss.item():.4f}")
+        avg_loss = epoch_loss / count if count > 0 else 0
+        print(f"  Epoch {epoch+1}/{epochs} | Avg Loss: {avg_loss:.4f} | Samples: {count}")
 
     new_model_path = model_path.replace(".pth", f"_v{int(time.time())}.pth")
     torch.save(model.state_dict(), new_model_path)

@@ -5,13 +5,13 @@ clear;
 clc;
 
 % --1. Network Parameters--
-% The Python AI Hub listens on 127.0.0.1 : 5000
+% Vertex Fusion SCADA listens on 127.0.0.1 : 8080
 remoteHost = '127.0.0.1';
-remotePort = 5000;
+remotePort = 8080;
 
 % --2. Global Socket Object-- 
 global client;
-fprintf('Connecting to Vertex Fusion Backend (%s:%d)...\n', remoteHost, remotePort);
+fprintf('Connecting to Vertex Fusion SCADA Hub (%s:%d)...\n', remoteHost, remotePort);
 
 try
     % For R2019b and later, use tcpclient. Ensure the 'Timeout' is sufficient for inference.

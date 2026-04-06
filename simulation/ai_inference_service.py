@@ -38,7 +38,8 @@ class AIInferenceEngine:
                     true_label INTEGER,
                     pred_label INTEGER,
                     confidence REAL,
-                    latency_ms REAL
+                    latency_ms REAL,
+                    features_json TEXT
                 )
             ''')
             conn.commit()
@@ -46,14 +47,16 @@ class AIInferenceEngine:
         except Exception as e:
             print(f"[AI Inference] ❌ Failed to initialize telemetry DB: {e}")
 
-    def _log_to_db(self, true_label, pred_label, confidence, latency_ms):
+    def _log_to_db(self, true_label, pred_label, confidence, latency_ms, features):
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
+            import json
+            features_json = json.dumps(features.tolist()) if hasattr(features, 'tolist') else json.dumps(list(features))
             cursor.execute('''
-                INSERT INTO inference_logs (timestamp, true_label, pred_label, confidence, latency_ms)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (time.time(), true_label, pred_label, confidence, latency_ms))
+                INSERT INTO inference_logs (timestamp, true_label, pred_label, confidence, latency_ms, features_json)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (time.time(), true_label, pred_label, confidence, latency_ms, features_json))
             conn.commit()
             conn.close()
         except Exception as e:
@@ -107,32 +110,42 @@ class AIInferenceEngine:
                 # Direct error instead of padding to avoid shape mismatch in GNN layers
                 raise ValueError(f"Expected 540 features (10x9x6), but received {features.size}")
             
-            x_tensor = torch.tensor(features_4d, dtype=torch.float32).to(self.device)
+            x_tensor = torch.tensor(features_4d, dtype=torch.float32, requires_grad=True).to(self.device)
             
-            with torch.no_grad():
-                # Forward pass: the new STGNN handles its own edge_index mapping
-                logits = self.model(x_tensor)
+            # Forward pass
+            logits = self.model(x_tensor)
+            probs = torch.softmax(logits, dim=0)
+            pred = torch.argmax(probs).item()
+            conf = probs[pred].item()
+            
+            target_bus = 0
+            # If an attack is detected with > 80% confidence, perform localization
+            if pred != 0 and conf > 0.80:
+                self.model.zero_grad()
+                target_logit = logits[pred]
+                target_logit.backward(retain_graph=True)
                 
-                # Softmax output
-                probs = torch.softmax(logits, dim=0)
-                pred = torch.argmax(probs).item()
-                conf = probs[pred].item()
-                
-                # Full probability distribution for academic review / telemetry
-                prob_dict = {
-                    self.attack_labels[i]: round(probs[i].item(), 4) for i in range(len(self.attack_labels))
-                }
+                # Saliency: [Batch(1), Time(10), Nodes(9), Features(6)]
+                grads = x_tensor.grad.detach().cpu().numpy()[0] # [10, 9, 6]
+                bus_importance = np.mean(np.abs(grads), axis=(0, 2)) # Shape (9,)
+                target_bus = int(np.argmax(bus_importance) + 1)
+            
+            # Full probability distribution for academic review / telemetry
+            prob_dict = {
+                self.attack_labels[i]: round(probs[i].item(), 4) for i in range(len(self.attack_labels))
+            }
                 
             latency_ms = (time.perf_counter() - start_time) * 1000.0
             
             # Use true_label if provided by SCADA, else fallback to pred
             actual_label = pred if true_label is None else true_label
-            self._log_to_db(true_label=actual_label, pred_label=pred, confidence=conf, latency_ms=latency_ms)
+            self._log_to_db(true_label=actual_label, pred_label=pred, confidence=conf, latency_ms=latency_ms, features=features)
             
             return {
                 "prediction": pred,
                 "attack_label": self.attack_labels[pred],
                 "confidence": conf,
+                "target_bus": target_bus,
                 "probabilities": prob_dict,
                 "latency_ms": round(latency_ms, 2),
                 "status": "success"

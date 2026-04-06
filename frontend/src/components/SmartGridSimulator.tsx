@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle, Play, Pause, RotateCcw, Zap } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ComposedChart, Bar } from "recharts";
 import { useToast } from "@/hooks/use-toast";
-import { GridAnimation3Bus } from "./GridAnimation3Bus";
+import IEEE9BusSLD from "./IEEE9BusSLD";
+import { GridState } from "@/types/grid";
 
 interface GridMeasurement {
   time: number;
@@ -46,7 +47,9 @@ export function SmartGridSimulator() {
   const [detections, setDetections] = useState<Detection[]>([]);
   const [protectionActions, setProtectionActions] = useState<ProtectionAction[]>([]);
   const [protectedZone, setProtectedZone] = useState<string | undefined>();
+  const [selectedTargetBus, setSelectedTargetBus] = useState<number>(1);
   const [lastAttackedBus, setLastAttackedBus] = useState<string>("");
+  const [latestState, setLatestState] = useState<GridState | null>(null);
 
   // Poll backend for real-time measurements
   useEffect(() => {
@@ -58,6 +61,7 @@ export function SmartGridSimulator() {
         if (!res.ok) throw new Error("Failed to fetch metrics");
 
         const metrics = await res.json();
+        setLatestState(metrics);
 
         // Map backend state to frontend measurement format
         const newPoint: GridMeasurement = {
@@ -82,7 +86,6 @@ export function SmartGridSimulator() {
         // Handle Detections from Backend state
         if (metrics.prediction > 0 && metrics.status.startsWith("ATTACK")) {
           setDetections((prev: Detection[]) => {
-            // Avoid duplicate alerts for the same timestamp
             if (prev.length > 0 && prev[prev.length - 1].timestamp.getTime() === new Date(metrics.timestamp * 1000).getTime()) {
               return prev;
             }
@@ -90,26 +93,25 @@ export function SmartGridSimulator() {
               timestamp: new Date(),
               attack_type: metrics.attack_type,
               confidence: metrics.confidence.toFixed(3),
-              affected_buses: "System-wide", // Backend doesn't specify bus yet
+              affected_buses: metrics.target_bus > 0 ? `Bus ${metrics.target_bus}` : "System-wide",
             }].slice(-10);
           });
         }
 
-        // Handle Breaker Status
-        if (metrics.breaker_status === "OPEN" && !protectedZone) {
-          setProtectedZone("Grid Isolated");
-          setProtectionActions((prev: ProtectionAction[]) => [...prev, {
-            timestamp: new Date(),
-            action: "TRIP",
-            target: "Main Breaker",
-            status: "Executed"
-          }]);
-          toast({
-            title: "Protection Activated",
-            description: "Main breaker tripped by SCADA.",
-            variant: "destructive"
-          });
-        } else if (metrics.breaker_status === "CLOSED" && protectedZone) {
+        // Handle Individual Breaker Status (Localized Isolation)
+        const openBreakers = Object.entries(metrics.breaker_states || {}).filter(([_, status]) => status === "OPEN");
+        if (openBreakers.length > 0) {
+          const isolationInfo = openBreakers.length > 10 ? "Grid Isolated" : `${openBreakers.length} Breakers OPEN`;
+          if (isolationInfo !== protectedZone) {
+            setProtectedZone(isolationInfo);
+            setProtectionActions((prev: ProtectionAction[]) => [...prev, {
+              timestamp: new Date(),
+              action: "ISOLATION",
+              target: isolationInfo,
+              status: "Active"
+            }].slice(-10));
+          }
+        } else if (protectedZone) {
           setProtectedZone(undefined);
         }
 
@@ -131,7 +133,7 @@ export function SmartGridSimulator() {
       await fetch("/api/simulator/protection", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "CLOSE", target_bus: 0 })
+        body: JSON.stringify({ action: "CLOSE" })
       });
       setData([]);
       setDetections([]);
@@ -145,12 +147,8 @@ export function SmartGridSimulator() {
   };
 
   const currentData = data[data.length - 1] || {
-    bus1_voltage: 1.0,
-    bus2_voltage: 0.98,
-    bus3_voltage: 1.01,
-    bus1_current: 10,
-    bus2_current: 9.5,
-    bus3_current: 10.5,
+    bus1_voltage: 1.0, bus2_voltage: 1.0, bus3_voltage: 1.0, bus4_voltage: 1.0, bus5_voltage: 1.0, bus6_voltage: 1.0, bus7_voltage: 1.0, bus8_voltage: 1.0, bus9_voltage: 1.0,
+    bus1_current: 10, bus2_current: 10, bus3_current: 10, bus4_current: 10, bus5_current: 10, bus6_current: 10, bus7_current: 10, bus8_current: 10, bus9_current: 10,
     frequency: 50,
     packet_loss: 0,
     attack_detected: false,
@@ -172,20 +170,8 @@ export function SmartGridSimulator() {
         <p className="text-muted-foreground">Real-time MATLAB Simulink integration with ST-GNN ML attack detection and automated SCADA protection</p>
       </div>
 
-      {/* 3-Bus Grid Animation */}
-      <GridAnimation3Bus
-        bus1Voltage={currentData.bus1_voltage}
-        bus2Voltage={currentData.bus2_voltage}
-        bus3Voltage={currentData.bus3_voltage}
-        bus1Current={currentData.bus1_current}
-        bus2Current={currentData.bus2_current}
-        bus3Current={currentData.bus3_current}
-        attackMode={attackMode}
-        selectedAttack={selectedAttack}
-        attackDetected={currentData.attack_detected}
-        protectedZone={protectedZone}
-        isRunning={isRunning}
-      />
+      {/* 9-Bus Substation SLD Visualization */}
+      <IEEE9BusSLD state={latestState} />
 
       {/* System Status */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
@@ -262,8 +248,25 @@ export function SmartGridSimulator() {
             </Button>
           </div>
 
-          <div className="space-y-2">
-            <p className="text-sm font-semibold">Inject Attack (MATLAB Function Block Simulation):</p>
+          <div className="space-y-3">
+            <div className="flex items-center gap-4">
+              <p className="text-sm font-semibold">Target Bus:</p>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+                  <Button
+                    key={num}
+                    size="sm"
+                    variant={selectedTargetBus === num ? "default" : "outline"}
+                    className="w-8 h-8 p-0 text-xs"
+                    onClick={() => setSelectedTargetBus(num)}
+                  >
+                    {num}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <p className="text-sm font-semibold">Inject Attack Type:</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {["none", "FDI", "DoS", "Replay"].map((attack) => (
                 <Button
@@ -276,14 +279,17 @@ export function SmartGridSimulator() {
                       const res = await fetch("/api/simulator/attack", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ attack_type: attack === "none" ? "None" : attack })
+                        body: JSON.stringify({ 
+                          attack_type: attack === "none" ? "None" : attack,
+                          target_bus: attack === "none" ? 0 : selectedTargetBus
+                        })
                       });
                       if (!res.ok) throw new Error("Attack injection failed");
 
                       if (attack !== "none") {
                         toast({
-                          title: `${attack} Attack Injected`,
-                          description: `Sent attack command to Simulation Engine`,
+                          title: `${attack} Active on Bus ${selectedTargetBus}`,
+                          description: `Localized perturbation injected.`,
                         });
                       }
                     } catch (e) {
@@ -294,7 +300,7 @@ export function SmartGridSimulator() {
                   size="sm"
                   className="text-xs"
                 >
-                  {attack === "none" ? "Normal" : attack}
+                  {attack === "none" ? "Clear All" : attack}
                 </Button>
               ))}
             </div>
@@ -401,34 +407,28 @@ export function SmartGridSimulator() {
           <CardDescription>Individual bus voltage readings with anomaly detection</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[
-              { label: "Bus 1", voltage: currentData.bus1_voltage, current: currentData.bus1_current },
-              { label: "Bus 2", voltage: currentData.bus2_voltage, current: currentData.bus2_current },
-              { label: "Bus 3", voltage: currentData.bus3_voltage, current: currentData.bus3_current },
-            ].map((bus) => (
-              <div
-                key={bus.label}
-                className={`p-4 rounded-lg border ${Math.abs(bus.voltage - 1.0) > 0.05
-                  ? "border-destructive/50 bg-destructive/5"
-                  : "border-primary/20 bg-muted/50"
-                  }`}
-              >
-                <p className="text-sm font-semibold text-foreground">{bus.label}</p>
-                <div className="grid grid-cols-2 gap-2 mt-3">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Voltage</p>
-                    <p className={`text-lg font-bold ${Math.abs(bus.voltage - 1.0) > 0.05 ? "text-destructive" : "text-primary"}`}>
-                      {bus.voltage.toFixed(4)} p.u.
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Current</p>
-                    <p className="text-lg font-bold text-primary">{bus.current.toFixed(2)} A</p>
-                  </div>
+          <div className="grid grid-cols-2 md:grid-cols-9 gap-2">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((id) => {
+              const voltage = (currentData as any)[`bus${id}_voltage`];
+              const current = (currentData as any)[`bus${id}_current`];
+              const isHigh = Math.abs(voltage - 1.0) > 0.05;
+              
+              return (
+                <div
+                  key={id}
+                  className={`p-2 rounded-lg border text-center ${isHigh
+                    ? "border-destructive/50 bg-destructive/5"
+                    : "border-primary/20 bg-muted/50"
+                    }`}
+                >
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Bus {id}</p>
+                  <p className={`text-sm font-bold mt-1 ${isHigh ? "text-destructive" : "text-primary"}`}>
+                    {voltage.toFixed(3)}
+                  </p>
+                  <p className="text-[9px] text-muted-foreground mt-0.5">{current.toFixed(1)}A</p>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>

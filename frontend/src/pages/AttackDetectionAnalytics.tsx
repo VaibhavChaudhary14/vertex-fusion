@@ -1,16 +1,33 @@
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertTriangle, BarChart3, TrendingUp } from "lucide-react";
 
 export default function AttackDetectionAnalytics() {
-  const attackStats = [
-    { type: "FDI", name: "False Data Injection", detected: 245, missed: 8, dr: 96.8, fa: 1.2, severity: "critical" },
-    { type: "RW", name: "Ransomware", detected: 182, missed: 12, dr: 93.8, fa: 1.5, severity: "critical" },
-    { type: "RS", name: "Reverse Shell", detected: 156, missed: 13, dr: 92.3, fa: 1.8, severity: "high" },
-    { type: "BF", name: "Brute Force", detected: 128, missed: 18, dr: 87.7, fa: 2.1, severity: "high" },
-    { type: "BD", name: "Backdoor", detected: 95, missed: 17, dr: 84.8, fa: 2.4, severity: "medium" },
-  ];
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/simulator/analytics")
+      .then(res => res.json())
+      .then(json => {
+        if (json.status === "success") setData(json);
+        setLoading(false);
+      })
+      .catch(err => console.error("Failed to fetch analytics:", err));
+  }, []);
+
+  const attackStatsRaw = data?.attack_stats || {};
+  const attackStats = Object.keys(attackStatsRaw).map(key => ({
+    type: key,
+    name: key === "FDI" ? "False Data Injection" : key === "DoS" ? "Denial of Service" : "Replay Attack",
+    detected: attackStatsRaw[key].count,
+    missed: 0, // Mocked for now until DB has labels
+    dr: attackStatsRaw[key].detection_rate,
+    fa: 0,
+    severity: key === "FDI" ? "critical" : "high"
+  }));
 
   return (
     <div className="flex flex-col h-full bg-gradient-to-br from-background via-primary/2 to-background">
@@ -20,7 +37,7 @@ export default function AttackDetectionAnalytics() {
             Attack Detection Analytics
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Comprehensive attack type analysis, detection coverage, and model performance breakdown
+            Real-time research benchmarks: MTTD: <strong>{data?.mttd_ms || 0}ms</strong> | Global Accuracy: <strong>{data?.accuracy || 0}%</strong>
           </p>
         </div>
 

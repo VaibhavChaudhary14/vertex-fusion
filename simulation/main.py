@@ -34,10 +34,12 @@ app.add_middleware(
 
 class AttackRequest(BaseModel):
     attack_type: str # None, FDI, DoS, Replay
+    target_bus: Optional[int] = 0
 
 class ProtectionRequest(BaseModel):
     action: str # TRIP, CLOSE
-    target_bus: int
+    bus_id: Optional[int] = None
+    line_id: Optional[str] = None
 
 @app.get("/")
 def read_root():
@@ -84,6 +86,65 @@ def get_roc_metrics():
     except Exception as e:
         return {"error": f"Failed to fetch telemetry: {e}"}
 
+@app.get("/metrics/analytics")
+def get_detailed_analytics():
+    """
+    Phase 5: Calculates research-grade metrics (Accuracy, ROC, MTTD) from telemetry.db.
+    """
+    import sqlite3
+    import pandas as pd
+    import numpy as np
+    db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "telemetry.db")
+    try:
+        conn = sqlite3.connect(db_path)
+        df = pd.read_sql_query("SELECT * FROM inference_logs", conn)
+        conn.close()
+
+        if df.empty:
+            return {"error": "No telemetry data available for analytics."}
+
+        # Calculate Accuracy
+        accuracy = (df['true_label'] == df['pred_label']).mean() * 100.0
+
+        # Calculate Mean Time To Detection (MTTD)
+        # We assume simulation steps are roughly 200ms based on scada.py loop
+        # We look for contiguous blocks of true_label != 0 and find the first pred_label != 0
+        mttd_list = []
+        is_attack_active = False
+        attack_start_time = 0
+        
+        for idx, row in df.iterrows():
+            if row['true_label'] != 0 and not is_attack_active:
+                is_attack_active = True
+                attack_start_time = row['timestamp']
+            elif row['true_label'] == 0 and is_attack_active:
+                is_attack_active = False
+            
+            if is_attack_active and row['pred_label'] != 0:
+                detection_time = (row['timestamp'] - attack_start_time) * 1000.0
+                mttd_list.append(detection_time)
+                is_attack_active = False # Count only the first detection per trigger
+
+        avg_mttd = np.mean(mttd_list) if mttd_list else 0.0
+
+        # Attack specific breakdown
+        attack_stats = {}
+        for label_id, name in {1: "FDI", 2: "DoS", 3: "Replay"}.items():
+            sub = df[df['true_label'] == label_id]
+            if not sub.empty:
+                dr = (sub['pred_label'] == label_id).mean() * 100.0
+                attack_stats[name] = {"detection_rate": round(dr, 2), "count": len(sub)}
+
+        return {
+            "accuracy": round(accuracy, 2),
+            "mttd_ms": round(avg_mttd, 2),
+            "total_samples": len(df),
+            "attack_stats": attack_stats,
+            "status": "success"
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.post("/attack")
 def trigger_attack(request: AttackRequest):
     """
@@ -97,8 +158,8 @@ def trigger_attack(request: AttackRequest):
         except ImportError:
             return {"error": "Could not import set_attack"}
 
-    set_attack(request.attack_type)
-    return {"status": "success", "attack_type": request.attack_type}
+    set_attack(request.attack_type, target_bus=request.target_bus)
+    return {"status": "success", "attack_type": request.attack_type, "target_bus": request.target_bus}
 
 @app.post("/protection")
 def trigger_protection(request: ProtectionRequest):
@@ -107,8 +168,9 @@ def trigger_protection(request: ProtectionRequest):
         raise HTTPException(status_code=400, detail="Invalid action. Use TRIP or CLOSE")
     
     status = "OPEN" if request.action == "TRIP" else "CLOSED"
-    set_breaker(status)
-    return {"status": "success", "message": f"Breaker {request.target_bus} set to {status}"}
+    set_breaker(status, line_id=request.line_id, bus_id=request.bus_id)
+    target = f"{request.line_id}_B{request.bus_id}" if request.line_id else "Global"
+    return {"status": "success", "message": f"Breaker {target} set to {status}"}
 
 @app.post("/simulate")
 def restart_simulation():

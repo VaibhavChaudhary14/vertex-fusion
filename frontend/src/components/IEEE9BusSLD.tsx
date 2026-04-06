@@ -47,9 +47,8 @@ const IEEE9BusSLD: React.FC<Props> = ({ state }) => {
 
   const lines = [
     [1, 4], [2, 7], [3, 9], // Transformer lines
-    [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 4] // Loop lines
+    [4, 5], [4, 6], [5, 7], [6, 9], [7, 8], [8, 9] // Loop lines
   ];
-
   const renderLine = (start: number, end: number) => {
     const p1 = busPositions[start];
     const p2 = busPositions[end];
@@ -59,19 +58,59 @@ const IEEE9BusSLD: React.FC<Props> = ({ state }) => {
     const isCritical = d1.status === 'critical' || d2.status === 'critical';
     const isAttack = d1.status === 'attack' || d2.status === 'attack';
 
-    let stroke = 'hsl(var(--border))';
-    if (isCritical) stroke = 'hsl(var(--destructive))';
-    else if (isAttack) stroke = 'hsl(var(--warning))';
+    const stroke = isCritical ? 'hsl(var(--destructive))' : isAttack ? 'hsl(var(--warning))' : 'hsl(var(--border))';
+
+    // Calculate breaker positions (20% and 80% along the line)
+    const b1x = p1.x + 0.2 * (p2.x - p1.x);
+    const b1y = p1.y + 0.2 * (p2.y - p1.y);
+    const b2x = p1.x + 0.8 * (p2.x - p1.x);
+    const b2y = p1.y + 0.8 * (p2.y - p1.y);
+
+    const lineId = `L${Math.min(start, end)}-${Math.max(start, end)}`;
+    const b1Key = `${lineId}_B${start}`;
+    const b2Key = `${lineId}_B${end}`;
+
+    const b1Status = state?.breaker_states?.[b1Key] || 'CLOSED';
+    const b2Status = state?.breaker_states?.[b2Key] || 'CLOSED';
+
+    const toggleBreaker = async (line: string, bus: number, current: string) => {
+      const nextStatus = current === 'CLOSED' ? 'OPEN' : 'CLOSED';
+      try {
+        await fetch("/api/simulator/protection", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: nextStatus === 'OPEN' ? 'TRIP' : 'CLOSE', bus_id: bus, line_id: line })
+        });
+      } catch (e) {
+        console.error("Failed to toggle breaker:", e);
+      }
+    };
 
     return (
-      <line
-        key={`${start}-${end}`}
-        x1={p1.x} y1={p1.y}
-        x2={p2.x} y2={p2.y}
-        stroke={stroke}
-        strokeWidth={isCritical ? 4 : 2}
-        className="transition-all duration-500"
-      />
+      <g key={`${start}-${end}`}>
+        <line
+          x1={p1.x} y1={p1.y}
+          x2={p2.x} y2={p2.y}
+          stroke={stroke}
+          strokeWidth={isCritical ? 4 : 2}
+          strokeDasharray={b1Status === 'OPEN' || b2Status === 'OPEN' ? "5,5" : "0"}
+          className="transition-all duration-500"
+        />
+        {/* Breaker 1 (Near start bus) */}
+        <rect
+          x={b1x - 6} y={b1y - 6} width={12} height={12}
+          rx={2}
+          className={`cursor-pointer transition-colors duration-300 ${b1Status === 'OPEN' ? 'fill-destructive' : 'fill-primary'}`}
+          onClick={() => toggleBreaker(lineId, start, b1Status)}
+        />
+        {/* Breaker 2 (Near end bus) */}
+        <rect
+          x={b2x - 6} y={b2y - 6} width={12} height={12}
+          rx={2}
+          className={`cursor-pointer transition-colors duration-300 ${b2Status === 'OPEN' ? 'fill-destructive' : 'fill-primary'}`}
+          onClick={() => toggleBreaker(lineId, end, b2Status)}
+        />
+      </g>
     );
   };
 

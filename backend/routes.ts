@@ -553,20 +553,30 @@ Format responses with clear structure using markdown when helpful.`;
     }
   });
 
+  app.get("/api/simulator/analytics", isAuthenticated, async (req, res) => {
+    try {
+      const response = await fetch(`${SIM_SERVICE_URL}/metrics/analytics`);
+      if (!response.ok) throw new Error("Simulation service error");
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Simulator API Error:", error);
+      res.status(503).json({ error: "Simulation service unavailable", details: String(error) });
+    }
+  });
+
   app.post("/api/simulator/attack", async (req, res) => {
     try {
-      const { attack_type } = req.body;
+      const { attack_type, target_bus } = req.body;
       const response = await fetch(`${SIM_SERVICE_URL}/attack`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ attack_type })
+        body: JSON.stringify({ attack_type, target_bus: target_bus || 0 })
       });
-
       if (!response.ok) {
         const err = await response.text();
         return res.status(response.status).json({ error: err });
       }
-
       const data = await response.json();
       res.json(data);
     } catch (error) {
@@ -586,23 +596,16 @@ Format responses with clear structure using markdown when helpful.`;
 
   app.post("/api/simulator/protection", async (req, res) => {
     try {
-      const { target_bus, action_type } = req.body;
-      // action_type: "TRIP" or "CLOSE"
-
+      const { action, bus_id, line_id } = req.body;
       const response = await fetch(`${SIM_SERVICE_URL}/protection`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: action_type,
-          target_bus: target_bus
-        })
+        body: JSON.stringify({ action, bus_id, line_id })
       });
-
       if (!response.ok) {
         const err = await response.text();
         return res.status(response.status).json({ error: err });
       }
-
       const data = await response.json();
       res.json(data);
     } catch (error) {

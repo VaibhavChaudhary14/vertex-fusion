@@ -26,6 +26,15 @@ DATA_DIR = os.path.join(BASE_DIR, "datasets")
 # Global variables for simulation state
 server_thread = None
 stop_event = threading.Event()
+
+# Line definitions (18 breakers total: 9 lines * 2 ends)
+# Format: {line_id: [bus_a, bus_b]}
+SYSTEM_LINES = {
+    "L1-4": [1, 4], "L2-7": [2, 7], "L3-9": [3, 9],
+    "L4-5": [4, 5], "L4-6": [4, 6], "L5-7": [5, 7],
+    "L6-9": [6, 9], "L7-8": [7, 8], "L8-9": [8, 9]
+}
+
 latest_system_state = {
     "timestamp": 0,
     "bus1_voltage": 1.0, "bus2_voltage": 1.0, "bus3_voltage": 1.0, "bus4_voltage": 1.0, "bus5_voltage": 1.0, "bus6_voltage": 1.0, "bus7_voltage": 1.0, "bus8_voltage": 1.0, "bus9_voltage": 1.0,
@@ -35,7 +44,8 @@ latest_system_state = {
     "prediction": 0,
     "confidence": 0.0,
     "status": "NORMAL",
-    "breaker_status": "CLOSED",
+    "breaker_status": "CLOSED", # Legacy global status
+    "breaker_states": {f"{li}_B{b}": "CLOSED" for li, buses in SYSTEM_LINES.items() for b in buses},
     "latency_ms": 0.0,
     "probabilities": {"Normal": 1.0, "FDI": 0.0, "DoS": 0.0, "Replay": 0.0},
     "plc_status": {
@@ -46,23 +56,39 @@ latest_system_state = {
     "latest_features": []
 }
 
-# Attack Configuration
-current_attack = {
-    "type": "None", # None, FDI, DoS, Replay
-    "active": False
-}
+# Attack Configuration (Multi-attack support)
+active_attacks = [] # List of {type: str, target_bus: int}
 
-def set_attack(attack_type):
-    current_attack["type"] = attack_type
-    current_attack["active"] = True if attack_type != "None" else False
-    print(f"[Attack] Attack set to: {attack_type}")
+def set_attack(attack_type, target_bus=0):
+    global active_attacks
+    if attack_type == "None":
+        active_attacks = []
+        print("[Attack] All attacks cleared.")
+        return
 
-def set_breaker(status):
-    latest_system_state["breaker_status"] = status
-    print(f"🔌 Breaker set to: {status}")
+    # Add or update attack on specific bus
+    new_attack = {"type": attack_type, "target_bus": target_bus}
+    # Avoid duplicates on same bus
+    active_attacks = [a for a in active_attacks if a["target_bus"] != target_bus]
+    active_attacks.append(new_attack)
+    print(f"[Attack] Added {attack_type} on Bus {target_bus}")
+
+def set_breaker(status, line_id=None, bus_id=None):
+    if line_id and bus_id:
+        key = f"{line_id}_B{bus_id}"
+        if key in latest_system_state["breaker_states"]:
+            latest_system_state["breaker_states"][key] = status
+            print(f"🔌 Breaker {key} set to: {status}")
+    else:
+        # Global fallback (Trips everything if status is OPEN)
+        latest_system_state["breaker_status"] = status
+        if status == "OPEN":
+            for k in latest_system_state["breaker_states"]:
+                latest_system_state["breaker_states"][k] = "OPEN"
+        print(f"🔌 Global Breaker set to: {status}")
 
 def get_latest_state():
-    return latest_system_state
+    return latest_system_stlationate
 
 def run_scada_server(host="0.0.0.0", port=5020):
     print("[SCADA] Initializing components...")
@@ -140,16 +166,24 @@ def run_scada_server(host="0.0.0.0", port=5020):
             row_flat = df.iloc[idx].values[:WINDOW_SIZE * NUM_FEATURES]
 
             # Attack injection: perturb the raw values before scaling
-            if current_attack["active"]:
+            if active_attacks:
                 row_flat = row_flat.copy()
-                if current_attack["type"] == "FDI":
-                    row_flat *= 5.0  # Extreme attack for testing
-                elif current_attack["type"] == "DoS":
-                    prev_idx = (i - 1) % len(df)
-                    row_flat = df.iloc[prev_idx].values  # freeze
-                elif current_attack["type"] == "Replay":
-                    replay_idx = (i - 100) % len(df)
-                    row_flat = df.iloc[replay_idx].values  # replay old data
+                for atk in active_attacks:
+                    # Bus indices are 0-8. NUM_FEATURES is 54 (9*6).
+                    # Each bus has 6 features.
+                    b_idx = atk["target_bus"] - 1
+                    if 0 <= b_idx < 9:
+                        idx_start = b_idx * 6
+                        if atk["type"] == "FDI":
+                            row_flat[idx_start:idx_start+6] *= 5.0
+                        elif atk["type"] == "DoS":
+                            # In real DoS, we'd freeze or block. 
+                            # Here we just zero it out to simulate loss of signal.
+                            row_flat[idx_start:idx_start+6] = 0.0
+                        elif atk["type"] == "Replay":
+                            replay_idx = (i - 100) % len(df)
+                            old_row = df.iloc[replay_idx].values
+                            row_flat[idx_start:idx_start+6] = old_row[idx_start:idx_start+6]
 
             # Reshape to (window_size, num_features)
             window = row_flat.reshape(WINDOW_SIZE, NUM_FEATURES)
@@ -208,15 +242,19 @@ def run_scada_server(host="0.0.0.0", port=5020):
             status_str = "NORMAL"
             
             attack_map = {"None": 0, "FDI": 1, "DoS": 2, "Replay": 3}
-            true_label = attack_map.get(current_attack["type"], 0)
+            # For simplicity in CSV loop, we take the primary attack type if multiple exist
+            primary_atk_type = active_attacks[0]["type"] if active_attacks else "None"
+            true_label = attack_map.get(primary_atk_type, 0)
+            
             window_flat_scaled = window_scaled.flatten()
             latest_system_state["latest_features"] = window_flat_scaled.tolist()
             result = inference_engine.predict(window_flat_scaled, true_label=true_label)
             pred = result["prediction"]
             conf = result["confidence"]
+            target_bus = result.get("target_bus", 0)
             
-            if current_attack["active"]:
-                print(f"[DEBUG] Attack Active: {current_attack['type']} | Pred: {pred} | Conf: {conf:.4f} | Probs: {result['probabilities']}")
+            if active_attacks:
+                print(f"[DEBUG] Attacks: {active_attacks} | Pred: {pred} | Target: {target_bus} | Conf: {conf:.4f}")
             
             if pred == 1: status_str = "ATTACK: FDI"
             elif pred == 2: status_str = "ATTACK: DoS"
@@ -232,11 +270,20 @@ def run_scada_server(host="0.0.0.0", port=5020):
                     print("[MOCK] AI failed to detect FDI, forcing pred=1 for logic verification.")
 
             if pred != 0:
-                if conf > 0.50: 
-                    set_breaker("OPEN")
-                    status_str += " (TRIP INCURRED)"
+                if conf < 0.80:
+                    status_str += " (STAGE 1: ALARM ONLY)"
+                elif conf < 0.95:
+                    status_str += f" (STAGE 2: SELECTIVE ISOLATION - BUS {target_bus})"
+                    # Trip both sides of all lines connected to target_bus
+                    for li, buses in SYSTEM_LINES.items():
+                        if target_bus in buses:
+                            set_breaker("OPEN", line_id=li, bus_id=target_bus)
+                            # Also trip the other end for full segment isolation
+                            other_bus = buses[1] if buses[0] == target_bus else buses[0]
+                            set_breaker("OPEN", line_id=li, bus_id=other_bus)
                 else:
-                    status_str += " (ALARM ONLY)"
+                    status_str += " (STAGE 3: EMERGENCY ISOLATION)"
+                    set_breaker("OPEN") # Global trip
 
             # --- Extract bus values from last timestep (unscaled raw) ---
             raw = window[-1]  # last timestep, unscaled
@@ -269,8 +316,9 @@ def run_scada_server(host="0.0.0.0", port=5020):
             latest_system_state["frequency"] = 50.0 + (pred * 0.05)  # small deviation on attack
             latest_system_state["prediction"] = pred
             latest_system_state["confidence"] = round(conf, 4)
+            latest_system_state["target_bus"] = target_bus
             latest_system_state["status"] = status_str
-            latest_system_state["attack_type"] = current_attack["type"]
+            latest_system_state["attack_type"] = primary_atk_type
             latest_system_state["probabilities"] = result.get("probabilities", {})
 
             # Update PLC status based on prediction
@@ -352,26 +400,40 @@ def run_scada_server(host="0.0.0.0", port=5020):
                             window_flat_scaled = window_scaled.flatten()
                             latest_system_state["latest_features"] = window_flat_scaled.tolist()
                             
+                            # Phase 5: Confidence-Based Logic (Granular Mitigation)
                             attack_map = {"None": 0, "FDI": 1, "DoS": 2, "Replay": 3}
-                            true_label = attack_map.get(current_attack["type"], 0)
+                            primary_atk_type = active_attacks[0]["type"] if active_attacks else "None"
+                            true_label = attack_map.get(primary_atk_type, 0)
                             
                             result = inference_engine.predict(window_flat_scaled, true_label=true_label)
                             pred = result["prediction"]
                             conf = result["confidence"]
+                            target_bus = result.get("target_bus", 0)
                             
-                            # Phase 5: Confidence-Based Logic
-                            action = "NORMAL"
-                            command_to_matlab = b"NORM"
+                            # Determine commands for MATLAB
+                            # We send string commands that the MATLAB script parses
                             if pred != 0:
-                                if conf > 0.90:
-                                    action = "TRIP_BREAKER"
-                                    command_to_matlab = b"TRIP"
+                                if conf < 0.80:
+                                    conn.sendall(b"ALRM")
+                                elif conf < 0.95:
+                                    # Selective Trip for localized target_bus
+                                    for li, buses in SYSTEM_LINES.items():
+                                        if target_bus in buses:
+                                            # We send commands for both ends of the line
+                                            other_bus = buses[1] if buses[0] == target_bus else buses[0]
+                                            set_breaker("OPEN", line_id=li, bus_id=target_bus)
+                                            set_breaker("OPEN", line_id=li, bus_id=other_bus)
+                                            # Send actual string commands to MATLAB
+                                            conn.sendall(f"TRIP {li}_B{target_bus} ".encode())
+                                            conn.sendall(f"TRIP {li}_B{other_bus} ".encode())
                                 else:
-                                    action = "ALARM_ONLY"
-                                    command_to_matlab = b"ALRM"
-                            
-                            # Send mitigation command to MATLAB
-                            conn.sendall(command_to_matlab)
+                                    # Emergency Isolation (Global Trip)
+                                    set_breaker("OPEN")
+                                    conn.sendall(b"TRIP ALL")
+                            else:
+                                # Normal: Ensure breakers are synced if manually closed on UI
+                                # For performance, we could just send a NORM reset or individual CLOSEs
+                                conn.sendall(b"NORM")
                             
                             # Update system state
                             status_str = "NORMAL"

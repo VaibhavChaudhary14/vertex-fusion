@@ -17,4 +17,6 @@ export interface GridState {
     breaker_status: string;
     latency_ms: number;
     probabilities: Record<string, number>;
+    breaker_states: Record<string, string>;
+    target_bus: number;
 }

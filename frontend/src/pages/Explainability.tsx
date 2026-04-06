@@ -170,6 +170,28 @@ export default function Explainability() {
                         </CardContent>
                     </Card>
 
+                    {/* Phase 4: Bus-Level Anomaly Indicators */}
+                    <div className="grid grid-cols-3 md:grid-cols-9 gap-4">
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(bus => {
+                            const busImportance = data.top_features
+                                .filter(f => f.bus === bus)
+                                .reduce((acc, curr) => acc + curr.importance, 0);
+                            
+                            const isHigh = busImportance > 15; // Threshold for "high" contribution
+                            
+                            return (
+                                <Card key={bus} className={`border-2 ${isHigh ? "border-destructive/50 bg-destructive/5 shadow-md" : "border-border"}`}>
+                                    <div className="p-3 text-center">
+                                        <div className="text-xs font-medium text-muted-foreground mb-1">Bus {bus}</div>
+                                        <div className={`text-xl font-bold ${isHigh ? "text-destructive" : "text-foreground"}`}>
+                                            {busImportance.toFixed(0)}%
+                                        </div>
+                                    </div>
+                                </Card>
+                            );
+                        })}
+                    </div>
+
                     <div className="text-xs text-muted-foreground text-center">
                         * Explanation methodology: Mean Absolute Temporal Gradients (Saliency Map) over the 10-step spatial-temporal window.
                     </div>
