@@ -39,6 +39,7 @@ npm run dev
 
 ## 🏗️ Project Structure
 
+- **`9 Bus Major/`**: Main MATLAB/Simulink directory for IEEE 9-bus dynamic simulation.
 - **`frontend/`**: React 18 dashboard for real-time SCADA visualization.
 - **`backend/`**: Node.js Express server handling API proxying, auth, and data persistence.
 - **`simulation/`**: Python FastAPI service running Pandapower power flow simulation and ST-GNN AI detection models.
