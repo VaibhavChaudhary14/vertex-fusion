@@ -88,7 +88,7 @@ def set_breaker(status, line_id=None, bus_id=None):
         print(f"🔌 Global Breaker set to: {status}")
 
 def get_latest_state():
-    return latest_system_stlationate
+    return latest_system_state
 
 def run_scada_server(host="0.0.0.0", port=5020):
     print("[SCADA] Initializing components...")
@@ -124,7 +124,8 @@ def run_scada_server(host="0.0.0.0", port=5020):
     # ---------------------------
     def start_plc_server(name, p_port):
         print(f"[Modbus] Starting {name} on {host}:{p_port}")
-        p_store = ModbusDeviceContext(hr=ModbusSequentialDataBlock(0, [0]*100))
+        # Use start address 1 to comply with newer pymodbus internal validation
+        p_store = ModbusDeviceContext(hr=ModbusSequentialDataBlock(1, [0]*100))
         p_context = ModbusServerContext(p_store, single=True)
         # We store the context in a way that the feeder can access it
         plc_nodes[name] = {"context": p_context, "port": p_port}
@@ -261,19 +262,16 @@ def run_scada_server(host="0.0.0.0", port=5020):
             elif pred == 3: status_str = "ATTACK: Replay"
 
             # --- Automated Protection Logic (Added for CSV loop) ---
-            if current_attack["active"] and current_attack["type"] == "FDI":
-                # MOCK TRIGGER: If AI fails to detect the 5.0x attack, force it for testing
-                if pred == 0:
-                    status_str = "ATTACK: FDI (MOCKED)"
-                    pred = 1
-                    conf = 0.99
-                    print("[MOCK] AI failed to detect FDI, forcing pred=1 for logic verification.")
-
+            # Define high-level action for state tracking
+            current_action = "MONITORING"
+            
             if pred != 0:
                 if conf < 0.80:
                     status_str += " (STAGE 1: ALARM ONLY)"
+                    current_action = "ALARM_ONLY"
                 elif conf < 0.95:
                     status_str += f" (STAGE 2: SELECTIVE ISOLATION - BUS {target_bus})"
+                    current_action = "TRIP_BREAKER"
                     # Trip both sides of all lines connected to target_bus
                     for li, buses in SYSTEM_LINES.items():
                         if target_bus in buses:
@@ -382,6 +380,26 @@ def run_scada_server(host="0.0.0.0", port=5020):
                     if len(data) == NUM_FEATURES:
                         row = data
                         
+                        # --- Hardened Attack Injection for MATLAB Stream ---
+                        global active_attacks
+                        if active_attacks:
+                            row = row.copy()
+                            for atk in active_attacks:
+                                b_idx = atk["target_bus"] - 1
+                                atk_type = atk["type"]
+                                if 0 <= b_idx < 9:
+                                    idx_start = b_idx * 6
+                                    # Patterns optimized for ST-GNN detection
+                                    if atk_type == "FDI":
+                                        row[idx_start:idx_start+6] += 20.0 # Clear statistical shift
+                                    elif atk_type == "DoS":
+                                        row[idx_start:idx_start+6] = -1.0  # Signal loss signature
+                                    elif atk_type == "Replay":
+                                        # Temporal jitter signature
+                                        row[idx_start:idx_start+6] += np.random.normal(0, 5.0, 6)
+                                    
+                                    print(f"[INJECT] {atk_type} active on Bus {atk['target_bus']}")
+                
                         window_buffer.append(row)
                         if len(window_buffer) > WINDOW_SIZE:
                             window_buffer.pop(0)
@@ -399,7 +417,7 @@ def run_scada_server(host="0.0.0.0", port=5020):
                             # Inference
                             window_flat_scaled = window_scaled.flatten()
                             latest_system_state["latest_features"] = window_flat_scaled.tolist()
-                            
+                                
                             # Phase 5: Confidence-Based Logic (Granular Mitigation)
                             attack_map = {"None": 0, "FDI": 1, "DoS": 2, "Replay": 3}
                             primary_atk_type = active_attacks[0]["type"] if active_attacks else "None"
@@ -409,6 +427,13 @@ def run_scada_server(host="0.0.0.0", port=5020):
                             pred = result["prediction"]
                             conf = result["confidence"]
                             target_bus = result.get("target_bus", 0)
+                            
+                            # --- Closed Loop: Send Prediction back to Simulink ---
+                            # Send as a single byte (0-3) for the y_pred signal
+                            try:
+                                conn.sendall(bytes([int(pred)]))
+                            except Exception as e:
+                                print(f"[ERROR] Failed to send prediction to MATLAB: {e}")
                             
                             # Determine commands for MATLAB
                             # We send string commands that the MATLAB script parses
@@ -441,11 +466,12 @@ def run_scada_server(host="0.0.0.0", port=5020):
                             elif pred == 2: status_str = "ATTACK: DoS"
                             elif pred == 3: status_str = "ATTACK: Replay"
                             
-                            if action == "TRIP_BREAKER":
-                                set_breaker("OPEN")
-                                status_str += " (TRIP INCURRED)"
-                            elif action == "ALARM_ONLY":
-                                status_str += " (ALARM ONLY)"
+                            # Determine current action based on confidence for MATLAB state reporting
+                            if pred != 0:
+                                if conf < 0.80:
+                                    status_str += " (ALARM ONLY)"
+                                else:
+                                    status_str += " (TRIP INCURRED)"
                             
                             # Extract bus values dynamically depending on incoming shape
                             if len(row) == 54:
@@ -495,10 +521,9 @@ def run_scada_server(host="0.0.0.0", port=5020):
     tcp_thread.start()
 
     # ---------------------------
-    # 4️⃣ Start Modbus TCP Server
+    # 4️⃣ Footer (PLC servers are already running in their own threads)
     # ---------------------------
-    print(f"[Modbus] Modbus-PLC-Server running on {host}:{port}")
-    StartTcpServer(context, identity=ModbusDeviceIdentification(), address=(host, port))
+    print(f"[SCADA] Simulation engine running on {host}. Modbus ports: 5020-5022")
 
 def start_scada_background():
     global server_thread

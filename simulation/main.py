@@ -1,14 +1,22 @@
+import os
+import sys
+
+# Bootstrap: Ensure 'simulation' directory is in sys.path for standalone execution from root
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.append(BASE_DIR)
+
+import uvicorn
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict
-import os
-import uvicorn
-from contextlib import asynccontextmanager
+
 try:
-    from .scada import start_scada_background, stop_scada, set_attack, get_latest_state, set_breaker
-except ImportError:
     from scada import start_scada_background, stop_scada, set_attack, get_latest_state, set_breaker
+except ImportError:
+    from .scada import start_scada_background, stop_scada, set_attack, get_latest_state, set_breaker
 
 # Lifecycle manager to start SCADA on startup
 @asynccontextmanager
@@ -144,6 +152,21 @@ def get_detailed_analytics():
         }
     except Exception as e:
         return {"error": str(e)}
+
+@app.post("/metrics/export")
+def export_results():
+    """
+    Phase 14: Finalizes live results by exporting telemetry database to results.mat.
+    """
+    try:
+        from export_results_to_mat import export_live_db_to_mat
+        success, message = export_live_db_to_mat()
+        if success:
+            return {"status": "success", "message": f"Exported results to {message}"}
+        else:
+            return {"status": "error", "message": message}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 @app.post("/attack")
 def trigger_attack(request: AttackRequest):
