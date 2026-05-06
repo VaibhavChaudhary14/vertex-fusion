@@ -1,0 +1,13 @@
+Attack,Phase,Voltage (V) [pu],Current (I) [pu],Frequency (F) [Hz],Active Power (P) [pu]
+FDI,Before Attack (Normal),1.012,0.654,60.00,1.245
+FDI,During Attack,1.262,0.654,60.01,1.545
+FDI,After Attack (Detection + Recovery),1.015,0.654,60.00,1.250
+DoS,Before Attack (Normal),1.012,0.654,60.00,1.245
+DoS,During Attack,0.000,0.000,60.01,0.000
+DoS,After Attack (Detection + Recovery),1.010,0.654,60.00,1.238
+Replay,Before Attack (Normal),1.012,0.654,60.00,1.245
+Replay,During Attack,1.014,0.654,60.01,1.250
+Replay,After Attack (Detection + Recovery),1.012,0.654,60.00,1.245
+Noise,Before Attack (Normal),1.012,0.654,60.00,1.245
+Noise,During Attack,1.062,0.654,60.05,1.325
+Noise,After Attack (Detection + Recovery),1.011,0.654,60.00,1.242

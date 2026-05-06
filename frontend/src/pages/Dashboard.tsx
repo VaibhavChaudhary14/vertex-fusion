@@ -33,6 +33,7 @@ const ATTACK_OPTIONS = [
   { value: "FDI", label: "False Data Injection", color: "bg-yellow-500" },
   { value: "DoS", label: "Denial of Service", color: "bg-orange-500" },
   { value: "Replay", label: "Replay Attack", color: "bg-red-500" },
+  { value: "Noise", label: "Noise Injection", color: "bg-blue-500" },
 ];
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -47,6 +48,7 @@ export default function Dashboard() {
   const [rocData, setRocData] = useState<{ fpr: number, tpr: number }[]>([]);
   const [auc, setAuc] = useState<number>(0);
   const [selectedAttack, setSelectedAttack] = useState("None");
+  const [showHeatmap, setShowHeatmap] = useState(true);
   const threatIdRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -68,9 +70,20 @@ export default function Dashboard() {
     try {
       addLog("GET /metrics -> Polling Python FastAPI (54 features)", "sent");
       const res = await fetch("/api/simulator/metrics");
-      if (!res.ok) { setSimConnected(false); return; }
+      
+      if (res.status === 503) {
+        addLog("503 Service Unavailable -> AI Engine is Offline.", "received");
+        setSimConnected(false);
+        return;
+      }
+      
+      if (!res.ok) {
+        setSimConnected(false);
+        return;
+      }
+
       const data: GridState = await res.json();
-      addLog(`200 OK -> Received state (Loss: ${data.packet_loss?.toFixed(1)}%)`, "received");
+      addLog(`200 OK -> Received state (Score: ${data.score?.toFixed(4)})`, "received");
       setSimConnected(true);
       setLatestState(data);
 
@@ -104,7 +117,8 @@ export default function Dashboard() {
       });
 
       // Log threats
-      if (data.prediction > 0 && data.status.startsWith("ATTACK")) {
+      const detectionScore = data.score ?? data.confidence;
+      if (data.prediction > 0 && detectionScore > 0.9) {
         setThreats(prev => {
           const last = prev[prev.length - 1];
           if (last && last.type === data.attack_type && Date.now() - new Date().getTime() < 1000) return prev;
@@ -112,7 +126,7 @@ export default function Dashboard() {
             id: ++threatIdRef.current,
             time: now.toLocaleTimeString(),
             type: data.attack_type,
-            confidence: +(data.confidence * 100).toFixed(1),
+            confidence: +(detectionScore * 100).toFixed(1),
             status: "DETECTED",
           };
           return [...prev.slice(-19), event];
@@ -257,6 +271,21 @@ export default function Dashboard() {
           <Button variant="outline" size="sm" onClick={reset} className="gap-2">
             <RotateCcw className="w-4 h-4" /> Reset
           </Button>
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            onClick={async () => {
+              try {
+                await fetch("/api/simulator/control/retrain", { method: "POST" });
+                toast({ title: "Retraining Triggered", description: "The ST-GNN pipeline is re-learning the grid baseline." });
+              } catch (e) {
+                toast({ title: "Error", description: "Failed to trigger retraining.", variant: "destructive" });
+              }
+            }} 
+            className="gap-2"
+          >
+            <Shield className="w-4 h-4" /> Retrain AI
+          </Button>
           <Button
             size="sm"
             onClick={() => setIsRunning(r => !r)}
@@ -288,7 +317,25 @@ export default function Dashboard() {
       </div>
 
       {/* ── IEEE 9-Bus Single Line Diagram ── */}
-      <IEEE9BusSLD state={latestState} />
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
+            <Activity className="w-4 h-4 text-primary" /> Live Spatial Anomaly Heatmap
+          </h3>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground uppercase font-bold">Heatmap</span>
+            <Button 
+              variant={showHeatmap ? "default" : "outline"} 
+              size="xs" 
+              className="h-7 text-[10px]" 
+              onClick={() => setShowHeatmap(!showHeatmap)}
+            >
+              {showHeatmap ? "ON" : "OFF"}
+            </Button>
+          </div>
+        </div>
+        <IEEE9BusSLD state={latestState} showHeatmap={showHeatmap} />
+      </div>
 
       {/* ── Charts row ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -339,8 +386,6 @@ export default function Dashboard() {
                 <YAxis tick={{ fontSize: 10 }} />
                 <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 6, fontSize: 12 }} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Line type="monotone" dataKey="i1" name="Bus 1" stroke="#3b82f6" dot={false} strokeWidth={2} isAnimationActive={false} />
-                <Line type="monotone" dataKey="i2" name="Bus 2" stroke="#10b981" dot={false} strokeWidth={2} isAnimationActive={false} />
                 <Line type="monotone" dataKey="i3" name="Bus 3" stroke="#8b5cf6" dot={false} strokeWidth={2} isAnimationActive={false} />
                 <Line type="monotone" dataKey="i4" name="Bus 4" stroke="#f59e0b" dot={false} strokeWidth={1} isAnimationActive={false} />
                 <Line type="monotone" dataKey="i5" name="Bus 5" stroke="#ef4444" dot={false} strokeWidth={1} isAnimationActive={false} />
@@ -357,37 +402,128 @@ export default function Dashboard() {
       {/* ── Control + Threat Log row ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        {/* Attack injection */}
+        {/* Research Attack Injection */}
         <Card className="border border-border">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-destructive" /> Attack Injection
+              <AlertTriangle className="w-4 h-4 text-destructive" /> Research Attack Injection
             </CardTitle>
-            <CardDescription>Inject cyber attacks into the simulation for ST-GNN detection testing</CardDescription>
+            <CardDescription>Inject custom cyber-physical distortions into the IEEE 9-bus grid</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              {ATTACK_OPTIONS.map(opt => (
-                <button
-                  key={opt.value}
-                  onClick={() => injectAttack(opt.value)}
-                  className={`px-4 py-3 rounded-lg border text-sm font-semibold transition-all text-left
-                    ${selectedAttack === opt.value
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border bg-muted/40 text-muted-foreground hover:border-primary/50 hover:text-foreground"
-                    }`}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground uppercase">Target Bus</label>
+                <select 
+                  className="w-full bg-muted border border-border rounded px-2 py-1 text-sm font-mono"
+                  onChange={(e) => setLatestState(prev => prev ? {...prev, target_bus: parseInt(e.target.value)} : null)}
+                  defaultValue="5"
                 >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`w-2 h-2 rounded-full ${opt.color}`} />
-                    {opt.value}
-                  </div>
-                  <p className="text-xs font-normal opacity-70">{opt.label}</p>
-                </button>
-              ))}
+                  {[1,2,3,4,5,6,7,8,9].map(b => <option key={b} value={b}>Bus {b}</option>)}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground uppercase">Attack Vector</label>
+                <select 
+                  id="attack-type-select" 
+                  className="w-full bg-muted border border-border rounded px-2 py-1 text-sm font-mono"
+                  onChange={(e) => setSelectedAttack(e.target.value)}
+                  value={selectedAttack}
+                >
+                  {ATTACK_OPTIONS.filter(o => o.value !== "None").map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            {/* SCADA Breaker */}
-            <div className="border border-border rounded-lg p-4 space-y-3">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground uppercase">Feature Distortion</label>
+                <select id="feat-select" className="w-full bg-muted border border-border rounded px-2 py-1 text-sm font-mono">
+                  <option value="0">Voltage (V)</option>
+                  <option value="1">Current (I)</option>
+                  <option value="2">Active Power (P)</option>
+                  <option value="3">Reactive Power (Q)</option>
+                  <option value="4">Frequency (F)</option>
+                  <option value="5">Angle (Phase)</option>
+                </select>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <label className="text-xs font-semibold text-muted-foreground uppercase">Distortion Magnitude</label>
+                <span id="mag-val" className="text-xs font-mono text-primary">0.10</span>
+              </div>
+              <input 
+                type="range" min="0" max="1" step="0.01" defaultValue="0.1" 
+                className="w-full" 
+                onChange={(e) => {
+                  const el = document.getElementById('mag-val');
+                  if (el) el.innerText = parseFloat(e.target.value).toFixed(2);
+                }}
+                id="mag-slider"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <Button 
+                variant="destructive" 
+                className="flex-1"
+                onClick={async () => {
+                  const bus = parseInt((document.querySelector('select') as HTMLSelectElement).value);
+                  const type = (document.getElementById('attack-type-select') as HTMLSelectElement).value;
+                  const feat = parseInt((document.getElementById('feat-select') as HTMLSelectElement).value);
+                  const mag = parseFloat((document.getElementById('mag-slider') as HTMLInputElement).value);
+                  await fetch("/api/simulator/attack", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ attack_type: type, target_bus: bus, feature_idx: feat, magnitude: mag })
+                  });
+                  toast({ title: "Attack Injected", description: `${type} at Bus ${bus} (Feat ${feat})`, variant: "destructive" });
+                }}
+              >
+                Inject Attack
+              </Button>
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={async () => {
+                  await fetch("/api/simulator/attack", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ attack_type: "None" })
+                  });
+                  toast({ title: "Attack Cleared", description: "Grid returning to normal state." });
+                }}
+              >
+                Clear
+              </Button>
+            </div>
+
+            {/* AI Explainability Diagnostics */}
+            <div className="border-t border-border pt-4 mt-4 space-y-3">
+              <p className="text-sm font-semibold flex items-center gap-2">
+                <Terminal className="w-4 h-4 text-accent" /> XAI AI Diagnostics
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-accent/10 border border-accent/20 rounded p-2">
+                  <p className="text-[10px] text-muted-foreground uppercase">Suspected Bus</p>
+                  <p className="text-lg font-bold text-accent font-mono">
+                    {latestState?.score && latestState.score > 0.9 ? `BUS ${latestState.fault_node}` : "—"}
+                  </p>
+                </div>
+                <div className="bg-accent/10 border border-accent/20 rounded p-2">
+                  <p className="text-[10px] text-muted-foreground uppercase">Dominant Signal</p>
+                  <p className="text-sm font-bold text-accent font-mono truncate">
+                    {latestState?.score && latestState.score > 0.9 ? latestState.top_feature : "CALIBRATING..."}
+                  </p>
+                </div>
+              </div>
+            </div>
+            {/* SCADA Breaker Control */}
+            <div className="border border-border rounded-lg p-4 space-y-3 mt-4">
               <p className="text-sm font-semibold flex items-center gap-2">
                 <Power className="w-4 h-4 text-primary" /> SCADA Protection — Main Breaker
               </p>
@@ -444,27 +580,74 @@ export default function Dashboard() {
       {/* ── Advanced ML Metrics ── */}
       <div className="grid grid-cols-1 gap-6">
         {/* ROC Curve */}
-        <Card className="border border-border">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center justify-between">
-              <span className="flex items-center gap-2"><TrendingUp className="w-4 h-4 text-warning" /> Live ROC Curve</span>
-              <Badge variant="outline" className="text-xs">AUC: {auc.toFixed(3)}</Badge>
-            </CardTitle>
-            <CardDescription>Receiver Operating Characteristic (Rolling 100 Inferences via SQLite)</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={260}>
-              <LineChart data={rocData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="fpr" type="number" domain={[0, 1]} tick={{ fontSize: 10 }} allowDataOverflow />
-                <YAxis dataKey="tpr" type="number" domain={[0, 1]} tick={{ fontSize: 10 }} allowDataOverflow />
-                <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 6, fontSize: 12 }} />
-                <Line type="stepAfter" dataKey="tpr" name="TPR vs FPR" stroke="#ec4899" dot={false} strokeWidth={2} isAnimationActive={false} />
-                <Line type="monotone" dataKey="fpr" name="Random Guess" stroke="hsl(var(--muted-foreground))" dot={false} strokeWidth={1} strokeDasharray="5 5" isAnimationActive={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="border border-border">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center justify-between">
+                <span className="flex items-center gap-2"><TrendingUp className="w-4 h-4 text-warning" /> Live ROC Curve</span>
+                <Badge variant="outline" className="text-xs">AUC: {auc.toFixed(3)}</Badge>
+              </CardTitle>
+              <CardDescription>Receiver Operating Characteristic (Rolling 100 Inferences via SQLite)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={260}>
+                <LineChart data={rocData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="fpr" type="number" domain={[0, 1]} tick={{ fontSize: 10 }} allowDataOverflow />
+                  <YAxis dataKey="tpr" type="number" domain={[0, 1]} tick={{ fontSize: 10 }} allowDataOverflow />
+                  <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 6, fontSize: 12 }} />
+                  <Line type="stepAfter" dataKey="tpr" name="TPR vs FPR" stroke="#ec4899" dot={false} strokeWidth={2} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="fpr" name="Random Guess" stroke="hsl(var(--muted-foreground))" dot={false} strokeWidth={1} strokeDasharray="5 5" isAnimationActive={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Multi-Class Confusion Matrix */}
+          <Card className="border border-border overflow-hidden">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Shield className="w-4 h-4 text-primary" /> Live Confusion Matrix (Research Proof)
+              </CardTitle>
+              <CardDescription>5x5 Classification Matrix: True Class (Rows) vs Predicted (Cols)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-6 gap-1 bg-muted/30 p-2 rounded-lg border border-border">
+                {/* Headers */}
+                <div className="h-8" />
+                {["Norm", "FDI", "DoS", "Repl", "Nois"].map(h => (
+                  <div key={h} className="h-8 flex items-center justify-center text-[10px] font-bold text-muted-foreground uppercase">{h}</div>
+                ))}
+
+                {/* Data Rows */}
+                {["Norm", "FDI", "DoS", "Repl", "Nois"].map((row, i) => (
+                  <>
+                    <div key={`row-${i}`} className="h-10 flex items-center pr-2 text-[10px] font-bold text-muted-foreground uppercase justify-end">{row}</div>
+                    {[0, 1, 2, 3, 4].map(j => {
+                      const val = latestState?.confusion_matrix?.[i]?.[j] || 0;
+                      // Calculate row total for color weight
+                      const rowTotal = latestState?.confusion_matrix?.[i]?.reduce((a, b) => a + b, 0) || 1;
+                      const weight = Math.min(val / rowTotal, 1);
+                      const isDiagonal = i === j;
+                      
+                      return (
+                        <div 
+                          key={`cell-${i}-${j}`} 
+                          className={`h-10 flex flex-col items-center justify-center rounded text-xs font-mono font-bold transition-all
+                            ${isDiagonal ? (weight > 0.5 ? 'bg-green-500 text-white' : 'bg-green-500/20 text-green-500') : 
+                                          (val > 0 ? 'bg-destructive/40 text-destructive' : 'bg-muted/50 text-muted-foreground/30')}`}
+                        >
+                          {val}
+                          {val > 0 && <span className="text-[8px] opacity-70">{(weight * 100).toFixed(0)}%</span>}
+                        </div>
+                      );
+                    })}
+                  </>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* ── Current Bus Readings ── */}

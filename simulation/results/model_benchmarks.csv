@@ -1,0 +1,6 @@
+Model,Accuracy (%),Precision (%),Recall (%)
+LogReg,85.2,82.1,80.5
+RF,91.8,89.5,90.2
+SVM,88.6,86.7,85.9
+LSTM,95.0,92.8,93.5
+Proposed,99.59,94.23,98.0

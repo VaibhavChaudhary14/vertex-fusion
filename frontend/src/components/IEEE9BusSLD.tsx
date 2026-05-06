@@ -9,9 +9,10 @@ interface BusData {
 
 interface Props {
   state: GridState | null;
+  showHeatmap?: boolean;
 }
 
-const IEEE9BusSLD: React.FC<Props> = ({ state }) => {
+const IEEE9BusSLD: React.FC<Props> = ({ state, showHeatmap = true }) => {
   // Bus positions in SVG space
   const busPositions: Record<number, { x: number; y: number }> = {
     1: { x: 100, y: 100 },
@@ -114,6 +115,32 @@ const IEEE9BusSLD: React.FC<Props> = ({ state }) => {
     );
   };
 
+  const renderHeatGlow = (id: number) => {
+    if (!showHeatmap || !state?.heatmap) return null;
+    const pos = busPositions[id];
+    const intensity = state.heatmap[id - 1] || 0;
+    const normalizedIntensity = Math.min(intensity * 10, 1.0);
+    
+    if (normalizedIntensity < 0.05) return null;
+
+    return (
+      <g key={`heat-${id}`}>
+        <defs>
+          <radialGradient id={`glow-${id}`}>
+            <stop offset="0%" stopColor="red" stopOpacity={normalizedIntensity * 0.6} />
+            <stop offset="100%" stopColor="red" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+        <circle 
+          cx={pos.x} cy={pos.y} 
+          r={50 + (normalizedIntensity * 100)} 
+          fill={`url(#glow-${id})`}
+          className="animate-pulse"
+        />
+      </g>
+    );
+  };
+
   const renderBus = (id: number) => {
     const pos = busPositions[id];
     const data = getBusData(id);
@@ -194,6 +221,9 @@ const IEEE9BusSLD: React.FC<Props> = ({ state }) => {
       )}
 
       <svg viewBox="0 0 1000 700" className="w-full h-full p-10 text-foreground">
+        {/* Heatmap Layer */}
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(id => renderHeatGlow(id))}
+
         {/* Draw Lines */}
         {lines.map(([start, end]) => renderLine(start, end))}
 

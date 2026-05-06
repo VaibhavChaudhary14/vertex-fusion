@@ -5,9 +5,9 @@ clear;
 clc;
 
 % --1. Network Parameters--
-% Vertex Fusion SCADA listens on 127.0.0.1 : 8080
+% Vertex Fusion SCADA listens on 127.0.0.1 : 5000
 remoteHost = '127.0.0.1';
-remotePort = 8080;
+remotePort = 5000;
 
 % --2. Global Socket Object-- 
 global client;

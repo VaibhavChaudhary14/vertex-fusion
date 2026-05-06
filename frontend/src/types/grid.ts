@@ -19,4 +19,12 @@ export interface GridState {
     probabilities: Record<string, number>;
     breaker_states: Record<string, string>;
     target_bus: number;
+    
+    // Research AI Diagnostics (XAI)
+    score: number;
+    fault_node: number;
+    top_feature: string;
+    top_feat_val: number;
+    heatmap: number[];
+    confusion_matrix: number[][];
 }

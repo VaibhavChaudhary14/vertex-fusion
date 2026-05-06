@@ -1,0 +1,4 @@
+Phase,Voltage (pu),Current (pu),Frequency (Hz),Active Power (pu)
+Normal Operation,1.0024,0.4852,60.0,1.1843
+During Attack (FDI),1.3021,0.6214,59.98,1.5422
+Post-Attack (Restored),1.0019,0.4861,60.0,1.1851
