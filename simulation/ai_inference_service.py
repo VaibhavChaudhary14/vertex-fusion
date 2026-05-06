@@ -19,7 +19,7 @@ class AIInferenceEngine:
         
         # Note: Static edge_index is now handled natively inside STGNN's __init__ for IEEE 9-bus
         
-        self.attack_labels = ["Normal", "FDI", "DoS", "Replay"]
+        self.attack_labels = ["Normal", "FDI", "DoS", "Replay", "Noise"]
         
         # Phase 6: Initialize SQLite Telemetry Database
         self.db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "telemetry.db")
@@ -45,7 +45,7 @@ class AIInferenceEngine:
             conn.commit()
             conn.close()
         except Exception as e:
-            print(f"[AI Inference] ❌ Failed to initialize telemetry DB: {e}")
+            print(f"[AI Inference] [ERROR] Failed to initialize telemetry DB: {e}")
 
     def _log_to_db(self, true_label, pred_label, confidence, latency_ms, features):
         try:
@@ -65,19 +65,19 @@ class AIInferenceEngine:
 
     def _load_model(self, path):
         if not os.path.exists(path):
-            print(f"[AI Inference] ❌ Model file not found: {path}")
+            print(f"[AI Inference] [ERROR] Model file not found: {path}")
             return
         
         try:
-            num_classes = 4
+            num_classes = 5
             self.model = STGNN(in_channels=6, hidden_channels=32, out_channels=num_classes)
             checkpoint = torch.load(path, map_location=self.device)
-            self.model.load_state_dict(checkpoint)
+            self.model.load_state_dict(checkpoint, strict=False)
             self.model.to(self.device)
             self.model.eval()
             print(f"[AI Inference] [SUCCESS] Model loaded (9-Bus, 6 Channels) from {path}")
         except Exception as e:
-            print(f"[AI Inference] ❌ Error loading model: {e}")
+            print(f"[AI Inference] [ERROR] Error loading model: {e}")
 
     def predict(self, features, true_label=None):
         """
@@ -99,16 +99,16 @@ class AIInferenceEngine:
             features = np.array(features)
             
             # Phase 8: IEEE 9-Bus Shape Requirement -> [Batch(1), Time(10), Nodes(9), Features(6)]
-            window_size = 10
+            window_size = 20
             num_nodes = 9
             num_features = 6
             
             # Expected flat array from SCADA feeder is 540 elements (10 * 9 * 6)
-            if features.size == 540:
+            if features.size == 1080:
                 features_4d = features.reshape(1, window_size, num_nodes, num_features)
             else:
                 # Direct error instead of padding to avoid shape mismatch in GNN layers
-                raise ValueError(f"Expected 540 features (10x9x6), but received {features.size}")
+                raise ValueError(f"Expected 1080 features (20x9x6), but received {features.size}")
             
             x_tensor = torch.tensor(features_4d, dtype=torch.float32, requires_grad=True).to(self.device)
             
@@ -152,7 +152,7 @@ class AIInferenceEngine:
             }
             
         except Exception as e:
-            print(f"[AI Inference] ❌ Inference error: {e}")
+            print(f"[AI Inference] [ERROR] Inference error: {e}")
             return {
                 "prediction": 0, 
                 "attack_label": "Unknown",
@@ -175,12 +175,12 @@ class AIInferenceEngine:
             
         try:
             features = np.array(features)
-            window_size, num_nodes, num_features = 10, 9, 6
+            window_size, num_nodes, num_features = 20, 9, 6
             
-            if features.size == 540:
+            if features.size == 1080:
                 features_4d = features.reshape(1, window_size, num_nodes, num_features)
             else:
-                raise ValueError(f"Explainability requires 540 features, got {features.size}")
+                raise ValueError(f"Explainability requires 1080 features, got {features.size}")
                 
             x_tensor = torch.tensor(features_4d, dtype=torch.float32, requires_grad=True).to(self.device)
             

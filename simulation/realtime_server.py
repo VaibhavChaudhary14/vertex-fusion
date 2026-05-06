@@ -120,7 +120,7 @@ LABEL_MAP = {0: "Normal", 1: "FDI", 2: "DoS", 3: "Replay", 4: "Noise"}
 REVERSE_LABEL_MAP = {v: k for k, v in LABEL_MAP.items()}
 
 server.listen(5)
-print(f"🚀 AI Engine ONLINE. Listening on {HOST}:{PORT}...")
+print(f"AI Engine ONLINE. Listening on {HOST}:{PORT}...")
 
 while True:
     print(f"Waiting for MATLAB connection on {HOST}:{PORT}...")
@@ -175,7 +175,7 @@ while True:
                 pred_class_idx = torch.argmax(probs, dim=1).item()
                 confidence = probs[0, pred_class_idx].item()
                 
-                status = f"🚨 {LABEL_MAP[pred_class_idx]} DETECTED" if pred_class_idx > 0 else "Normal Operation"
+                status = f"[ATTACK] {LABEL_MAP[pred_class_idx]} DETECTED" if pred_class_idx > 0 else "Normal Operation"
                 print(f"{status} | Confidence: {confidence:.3f}")
 
                 attack_status = status

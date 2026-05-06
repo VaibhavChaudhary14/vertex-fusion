@@ -78,7 +78,7 @@ class STGNN_Transformer(nn.Module):
 # ─────────────────────────────────────────
 print(f"\n[1/5] Loading dataset: {DATA_PATH}")
 if not os.path.exists(DATA_PATH):
-    sys.exit(f"❌ Dataset not found: {DATA_PATH}")
+    sys.exit(f"[ERROR] Dataset not found: {DATA_PATH}")
 
 df   = pd.read_csv(DATA_PATH)
 data = df.values.astype(np.float32)
@@ -97,7 +97,7 @@ print("\n[2/5] Fitting StandardScaler & saving scaler.pkl ...")
 scaler      = StandardScaler()
 data_scaled = scaler.fit_transform(data)
 joblib.dump(scaler, SCALER_OUT)
-print(f"      ✅ scaler.pkl saved  ({data.shape[1]} features)")
+print(f"      [SUCCESS] scaler.pkl saved  ({data.shape[1]} features)")
 
 # ─────────────────────────────────────────
 # ATTACK LABEL INJECTION  (rich, multi-bus)
@@ -279,6 +279,6 @@ print(classification_report(
 # ─────────────────────────────────────────
 model.cpu()
 torch.save(model.state_dict(), MODEL_OUT)
-print(f"✅ model.pth saved  →  {os.path.abspath(MODEL_OUT)}")
-print(f"✅ scaler.pkl saved →  {os.path.abspath(SCALER_OUT)}")
-print("\n🚀 Now run:  python simulation/realtime_server.py")
+print(f"[SUCCESS] model.pth saved  ->  {os.path.abspath(MODEL_OUT)}")
+print(f"[SUCCESS] scaler.pkl saved ->  {os.path.abspath(SCALER_OUT)}")
+print("\n[NEXT] Now run:  python simulation/realtime_server.py")

@@ -151,11 +151,12 @@ def run_scada_server(host="0.0.0.0", port=5020):
     # Phase 9: True IEEE 9-bus feature layout
     # 9 Nodes * 6 Features = 54 features per timestep
     # Format per node: [V_mag, V_ang, P, Q, Freq, I_mag]
-    WINDOW_SIZE = 10
+    WINDOW_SIZE = 20
     NUM_FEATURES = 54 
 
     def feeder_to_modbus():
         i = 0
+        window_buffer = []
 
         while not stop_event.is_set():
             if matlab_connected["status"]:
@@ -163,33 +164,38 @@ def run_scada_server(host="0.0.0.0", port=5020):
                 continue
                 
             idx = i % len(df)
-            # If CSV has old 18-feature data, we can only safely extract available columns
-            row_flat = df.iloc[idx].values[:WINDOW_SIZE * NUM_FEATURES]
+            # Each row has 54 features for 9 buses
+            row_flat = df.iloc[idx].values[:54].copy()
 
             # Attack injection: perturb the raw values before scaling
             if active_attacks:
-                row_flat = row_flat.copy()
                 for atk in active_attacks:
-                    # Bus indices are 0-8. NUM_FEATURES is 54 (9*6).
-                    # Each bus has 6 features.
                     b_idx = atk["target_bus"] - 1
                     if 0 <= b_idx < 9:
                         idx_start = b_idx * 6
                         if atk["type"] == "FDI":
                             row_flat[idx_start:idx_start+6] *= 5.0
                         elif atk["type"] == "DoS":
-                            # In real DoS, we'd freeze or block. 
-                            # Here we just zero it out to simulate loss of signal.
                             row_flat[idx_start:idx_start+6] = 0.0
                         elif atk["type"] == "Replay":
                             replay_idx = (i - 100) % len(df)
                             old_row = df.iloc[replay_idx].values
                             row_flat[idx_start:idx_start+6] = old_row[idx_start:idx_start+6]
 
-            # Reshape to (window_size, num_features)
-            window = row_flat.reshape(WINDOW_SIZE, NUM_FEATURES)
+            # Maintain sliding window of 20 timesteps
+            window_buffer.append(row_flat)
+            if len(window_buffer) > WINDOW_SIZE:
+                window_buffer.pop(0)
 
-            # Apply scaler per timestep
+            if len(window_buffer) < WINDOW_SIZE:
+                i += 1
+                time.sleep(0.1)
+                continue
+
+            # Shape: (20, 54)
+            window = np.array(window_buffer)
+
+            # Apply scaler
             if scaler:
                 try:
                     window_scaled = scaler.transform(window)
