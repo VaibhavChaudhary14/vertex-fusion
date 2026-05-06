@@ -25,7 +25,7 @@ end
 if coder.target('MATLAB')
     if isempty(tcp_client)
         try
-            tcp_client = tcpclient('127.0.0.1', 8080, 'Timeout', 0.05); % Match SCADA port
+            tcp_client = tcpclient('127.0.0.1', 5000, 'Timeout', 0.05); % Match SCADA port
         catch
             return;
         end

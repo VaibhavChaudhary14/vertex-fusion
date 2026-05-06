@@ -162,7 +162,9 @@ while True:
                 window.pop(0)
                 
             if len(window) == WINDOW_SIZE:
-                x_input = torch.tensor(window, dtype=torch.float).unsqueeze(0)
+                x_input = torch.tensor(
+                    np.array(window), dtype=torch.float
+                ).unsqueeze(0).requires_grad_(True)
                 
                 # Forward pass
                 model.zero_grad()
@@ -180,19 +182,21 @@ while True:
                 prob = confidence
                 
                 # --- XAI: Saliency Map ---
-                # Calculate saliency for the predicted class
-                input_gradients = torch.autograd.grad(probs[0, pred_class_idx], x_input)[0]
-                saliency = torch.abs(input_gradients).squeeze(0)[-1] # [Nodes, Features]
-                
-                # Per-Node Heatmap Score (sum of feature saliencies)
-                node_saliency = torch.sum(saliency, dim=1).numpy().tolist()
-                
-                # Identify high-impact bus and feature for text label
-                top_bus_idx = np.argmax(node_saliency)
-                top_feat_idx = torch.argmax(saliency[top_bus_idx]).item()
-                top_score = saliency[top_bus_idx, top_feat_idx].item()
-                
-                attributed_bus = top_bus_idx + 1
+                try:
+                    input_gradients = torch.autograd.grad(
+                        probs[0, pred_class_idx], x_input, retain_graph=True
+                    )[0]
+                    saliency = torch.abs(input_gradients).squeeze(0)[-1]  # [Nodes, Features]
+                    node_saliency = torch.sum(saliency, dim=1).detach().numpy().tolist()
+                    top_bus_idx   = int(np.argmax(node_saliency))
+                    top_feat_idx  = int(torch.argmax(saliency[top_bus_idx]).item())
+                    top_score     = float(saliency[top_bus_idx, top_feat_idx].item())
+                except Exception as xai_err:
+                    print(f"   [XAI] Saliency skipped: {xai_err}")
+                    node_saliency = [0.0] * 9
+                    top_bus_idx, top_feat_idx, top_score = 0, 0, 0.0
+
+                attributed_bus     = top_bus_idx + 1
                 attributed_feature = FEATURE_NAMES[top_feat_idx]
                 
                 # Check for active attack label from backend side-channel

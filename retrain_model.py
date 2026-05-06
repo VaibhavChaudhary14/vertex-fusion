@@ -32,7 +32,7 @@ NUM_NODES    = 9
 NUM_FEATURES = 6                # per node  →  54 total columns
 NUM_CLASSES  = 5                # 0:Normal 1:FDI 2:DoS 3:Replay 4:Noise
 WINDOW_SIZE  = 20
-EPOCHS       = 30
+EPOCHS       = 50
 BATCH_SIZE   = 64
 LR           = 5e-4
 
@@ -100,7 +100,7 @@ joblib.dump(scaler, SCALER_OUT)
 print(f"      ✅ scaler.pkl saved  ({data.shape[1]} features)")
 
 # ─────────────────────────────────────────
-# ATTACK LABEL INJECTION
+# ATTACK LABEL INJECTION  (rich, multi-bus)
 # ─────────────────────────────────────────
 print("\n[3/5] Injecting multi-class attack labels ...")
 T   = data_scaled.shape[0]
@@ -108,22 +108,100 @@ x_t = torch.tensor(data_scaled.reshape(T, NUM_NODES, NUM_FEATURES), dtype=torch.
 y   = np.zeros(T, dtype=np.int64)
 
 rng = np.random.default_rng(42)
-for atype in [1, 2, 3, 4]:   # FDI, DoS, Replay, Noise
-    starts = rng.choice(range(100, T - 120), size=5, replace=False)
-    for s in starts:
-        dur = 20
-        for t in range(s, min(s + dur, T)):
-            y[t] = atype
-            if atype == 1:
-                x_t[t, 2, 0] += 0.4
-            elif atype == 2:
-                x_t[t, 2, 0]  = 0.0
-            elif atype == 3 and t >= 10:
-                x_t[t, 2, 0]  = x_t[t - 10, 2, 0]
-            elif atype == 4:
-                x_t[t, 2, 0] += float(rng.normal(0, 0.1))
 
-print(f"      Label distribution: { {i: int((y==i).sum()) for i in range(5)} }")
+# ── Feature index reference ─────────────────────────────────────────────────
+# Per node: [0]=Voltage  [1]=Current  [2]=Active-P  [3]=Reactive-Q
+#           [4]=Frequency  [5]=Phase-Angle
+
+# ── Helper: non-overlapping start positions ──────────────────────────────────
+def pick_starts(n, lo, hi, min_gap, rng):
+    """Pick n non-overlapping start indices within [lo, hi]."""
+    chosen = []
+    attempts = 0
+    while len(chosen) < n and attempts < 10000:
+        s = int(rng.integers(lo, hi))
+        if all(abs(s - c) >= min_gap for c in chosen):
+            chosen.append(s)
+        attempts += 1
+    return chosen
+
+# ── Attack 1: FDI (False Data Injection) ────────────────────────────────────
+# Injects a large bias offset into voltage / active-power readings.
+# Targets: all 9 buses, features 0 (V) and 2 (P), varied magnitudes.
+FDI_CONFIGS = [
+    # (bus_idx, feat_idx, magnitude, duration)
+    (0, 0, +0.50, 30), (1, 2, +0.60, 25), (2, 0, -0.45, 28),
+    (3, 2, +0.70, 32), (4, 0, +0.55, 27), (5, 2, -0.65, 30),
+    (6, 0, +0.48, 25), (7, 2, +0.72, 35), (8, 0, -0.52, 28),
+    (2, 5, +0.60, 22), (5, 5, -0.58, 26), (0, 3, +0.45, 30),
+    (4, 3, -0.50, 25), (7, 0, +0.80, 30), (1, 4, +0.40, 20),
+    (3, 5, -0.55, 28), (6, 2, +0.65, 25), (8, 3, -0.60, 30),
+    (0, 2, +0.75, 35), (5, 0, -0.45, 22),
+]
+fdi_starts = pick_starts(len(FDI_CONFIGS), 100, T - 120, 40, rng)
+for (bus, feat, mag, dur), s in zip(FDI_CONFIGS, fdi_starts):
+    for t in range(s, min(s + dur, T)):
+        y[t] = 1
+        x_t[t, bus, feat] = x_t[t, bus, feat] + mag
+
+# ── Attack 2: DoS (Denial of Service) ───────────────────────────────────────
+# Zeroes out / flatlines multiple features on targeted buses.
+DoS_CONFIGS = [
+    (0, [0, 1], 30), (1, [2, 3], 28), (2, [0, 4], 32),
+    (3, [1, 5], 25), (4, [0, 2], 35), (5, [3, 4], 27),
+    (6, [1, 2], 30), (7, [0, 5], 28), (8, [2, 4], 32),
+    (2, [0, 1, 2], 25), (5, [0, 1, 2], 28),
+    (0, [3, 4, 5], 20), (7, [3, 4, 5], 22),
+    (4, [0, 1, 2, 3], 30), (8, [0, 1], 25),
+    (1, [4, 5], 35), (3, [0, 2, 4], 28),
+    (6, [1, 3, 5], 25), (5, [0, 2], 30), (2, [3, 5], 22),
+]
+dos_starts = pick_starts(len(DoS_CONFIGS), 100, T - 120, 40, rng)
+for (bus, feats, dur), s in zip(DoS_CONFIGS, dos_starts):
+    for t in range(s, min(s + dur, T)):
+        y[t] = 2
+        for f in feats:
+            x_t[t, bus, f] = 0.0
+
+# ── Attack 3: Replay ─────────────────────────────────────────────────────────
+# Replays stale measurements from 15-25 timesteps ago.
+REPLAY_CONFIGS = [
+    (0, 0, 15, 30), (1, 2, 18, 28), (2, 0, 20, 32),
+    (3, 3, 15, 25), (4, 1, 22, 35), (5, 4, 18, 27),
+    (6, 5, 16, 30), (7, 0, 20, 28), (8, 2, 15, 32),
+    (0, 3, 25, 20), (3, 5, 18, 25), (6, 1, 22, 28),
+    (1, 4, 20, 30), (4, 5, 16, 25), (7, 3, 18, 22),
+    (2, 4, 22, 28), (5, 1, 15, 32), (8, 0, 20, 25),
+    (0, 5, 18, 30), (4, 2, 25, 28),
+]
+replay_starts = pick_starts(len(REPLAY_CONFIGS), 120, T - 120, 40, rng)
+for (bus, feat, lag, dur), s in zip(REPLAY_CONFIGS, replay_starts):
+    for t in range(s, min(s + dur, T)):
+        y[t] = 3
+        if t - lag >= 0:
+            x_t[t, bus, feat] = x_t[t - lag, bus, feat]
+
+# ── Attack 4: Noise (Stochastic Perturbation) ────────────────────────────────
+# Adds Gaussian noise with varied std to sensor readings.
+NOISE_CONFIGS = [
+    (0, 0, 0.25, 30), (1, 1, 0.30, 28), (2, 2, 0.20, 32),
+    (3, 3, 0.35, 25), (4, 4, 0.28, 35), (5, 5, 0.22, 27),
+    (6, 0, 0.32, 30), (7, 2, 0.18, 28), (8, 4, 0.40, 32),
+    (1, 3, 0.25, 20), (3, 0, 0.30, 25), (5, 2, 0.35, 28),
+    (2, 5, 0.20, 30), (6, 3, 0.28, 25), (8, 1, 0.22, 22),
+    (0, 4, 0.30, 28), (4, 1, 0.25, 32), (7, 5, 0.35, 25),
+    (3, 2, 0.18, 30), (6, 4, 0.32, 28),
+]
+noise_starts = pick_starts(len(NOISE_CONFIGS), 100, T - 120, 40, rng)
+for (bus, feat, std, dur), s in zip(NOISE_CONFIGS, noise_starts):
+    for t in range(s, min(s + dur, T)):
+        y[t] = 4
+        x_t[t, bus, feat] = x_t[t, bus, feat] + float(rng.normal(0, std))
+
+dist = {i: int((y==i).sum()) for i in range(5)}
+print(f"      Label distribution: {dist}")
+total_attacks = sum(v for k,v in dist.items() if k > 0)
+print(f"      Total attack timesteps : {total_attacks}  /  {T}  ({100*total_attacks/T:.1f}%)")
 
 # ─────────────────────────────────────────
 # SLIDING WINDOW DATASET
@@ -191,6 +269,7 @@ with torch.no_grad():
 
 print(classification_report(
     all_true, all_preds,
+    labels=list(range(NUM_CLASSES)),
     target_names=["Normal", "FDI", "DoS", "Replay", "Noise"],
     zero_division=0
 ))

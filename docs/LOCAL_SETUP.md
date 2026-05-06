@@ -2,7 +2,15 @@
 
 Follow these steps to move the project from Replit to your local laptop (VS Code, etc.).
 
-## 1. Prerequisites
+## 1. Quick-Start: Service Port Reference
+| Service | Port | URL |
+| :--- | :--- | :--- |
+| **Digital Twin Dashboard** | **5050** | `http://localhost:5050` |
+| **Simulation API** | **8000** | `http://localhost:8000` |
+| **MATLAB TCP Bridge** | **5000** | `localhost:5000` |
+| **Modbus PLCs** | **5020-22** | `localhost:5020` |
+
+## 2. Prerequisites
 Ensure you have the following installed on your machine:
 - **Node.js** (v18 or higher)
 - **npm** or **yarn**
@@ -57,7 +65,7 @@ Runs the frontend (Vite) and backend (Express) simultaneously:
 ```bash
 npm run dev
 ```
-The app will be available at `http://localhost:5000`.
+The app will be available at `http://localhost:5050`.
 
 ### Production Build
 To create a production-ready version:
@@ -78,5 +86,5 @@ npm start
 
 ## 7. Troubleshooting
 - **Database Connection**: Ensure your internet is connected as it uses a remote Neon database.
-- **Port 5000**: Make sure no other app is using port 5000.
+- **Port 5050**: Make sure no other app is using port 5050.
 - **TypeScript Errors**: Run `npm run check` to find any type issues.

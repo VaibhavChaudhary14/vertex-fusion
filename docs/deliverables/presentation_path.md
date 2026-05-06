@@ -43,6 +43,16 @@ This guide provides a logical flow for explaining the Vertex Fusion project to a
 
 ---
 
+## 9. Technical Specs: Networking & Ports
+*For technical questions regarding inter-service communication:*
+- **Digital Twin Dashboard (Express)**: Port `5050`
+- **Simulation Engine (FastAPI)**: Port `8000`
+- **MATLAB TCP Bridge**: Port `5000`
+- **Modbus PLC Nodes**: Ports `5020`, `5021`, `5022`
+- **Frontend (Vite Dev Server)**: Port `5173`
+
+---
+
 ## Q&A Strategy (Panel Defense)
 - **"How does it handle noise?"**: Explain the normalization (StandardScaler) and the robust temporal smoothing in the ST-GNN.
 - **"Why GNN over Random Forest?"**: GNNs explicitly model the physical connections between buses, which is the "ground truth" of the grid.
